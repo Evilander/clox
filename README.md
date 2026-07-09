@@ -9,14 +9,13 @@ Resolution-independent: everything is drawn relative to the window size with
 
 ## Faces
 
-| Face | Style |
+| | |
 |---|---|
-| **Redline · 80s LED** | Retro red seven-segment alarm clock: ghost segments, bloom, blinking colon, PM/ALARM indicators, smoked-glass window, scanlines, floor reflection |
-| **Flip · Solari** | Split-flap clock with gravity-eased flap animation, axle pins, AM/PM tag, date line |
-| **Sweep · Wall Clock** | Brushed-metal bezel, ivory dial, serif numerals, date window, continuous sweep second hand, glass highlight |
-| **Station · Swiss Railway** | SBB clock: bar markers, red lollipop second hand that sweeps in 58.5s and pauses at 12, minute hand snaps with spring overshoot |
-| **Nixie · IN-18** | Glass tubes on a walnut base, unlit cathode stacks, honeycomb anode mesh, warm orange glow, neon-dot separators |
-| **VFD · Hi-Fi** | Cyan vacuum-fluorescent display behind dark receiver glass, weekday indicator row, dot-matrix texture |
+| ![Redline](screenshots/redline.jpg) **Redline · 80s LED** — red seven-segment alarm clock: ghost segments, bloom, blinking colon, PM/ALARM indicators, scanlines, floor reflection | ![Flip](screenshots/flip.jpg) **Flip · Solari** — split-flap cards with gravity-eased flap animation, axle pins, AM/PM tag, date line |
+| ![Sweep](screenshots/sweep.jpg) **Sweep · Wall Clock** — brushed-metal bezel, ivory dial, serif numerals, date window, continuous sweep second hand | ![Station](screenshots/station.jpg) **Station · Swiss Railway** — red lollipop second hand sweeps in 58.5s and pauses at 12; minute hand snaps with spring overshoot |
+| ![Nixie](screenshots/nixie.jpg) **Nixie · IN-18** — glass tubes on a walnut base, unlit cathode stacks, honeycomb anode mesh, neon-dot separators | ![VFD](screenshots/vfd.jpg) **VFD · Hi-Fi** — cyan vacuum-fluorescent display behind receiver glass, weekday indicator row, dot-matrix texture |
+| ![Wordgrid](screenshots/wordgrid.jpg) **Wordgrid · Word Clock** — 11×10 letter grid; the time lights up as a sentence, corner dots count the extra minutes | ![Terminal](screenshots/terminal.jpg) **Terminal · CRT** — green phosphor, typed boot sequence, 5×7 pixel-block digits, scanlines, refresh band, blinking cursor |
+| ![Braun](screenshots/braun.jpg) **Braun · Minimal** — Rams-school dial, stick hands, yellow second hand that steps each second with a mechanical overshoot | ![LCD](screenshots/lcd.jpg) **LCD · Digital Watch** — F-91W-style liquid crystal: dark segments with depth shadow, day/date header, resin bezel accents |
 
 ## Run it
 
