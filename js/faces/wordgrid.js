@@ -37,7 +37,7 @@
 
   function phrase(t) {
     const base = Math.floor(t.m / 5) * 5;
-    const words = ["IT", "IS", t.pm ? "PM" : "AM"];
+    const words = ["IT", "IS"];
     const MIN = {
       0: [], 5: ["FIVE_M", "PAST"], 10: ["TEN_M", "PAST"],
       15: ["A", "QUARTER", "PAST"], 20: ["TWENTY", "PAST"],
@@ -97,6 +97,22 @@
           }
         }
       }
+
+      // AM / PM indicator below the grid — the active one lights up.
+      ctx.font = `600 ${cell * 0.34}px "Segoe UI", system-ui, sans-serif`;
+      const apY = gy + 10.0 * cell;
+      [["AM", !t.pm, -cell * 0.85], ["PM", t.pm, cell * 0.85]].forEach(([lb, on, dx]) => {
+        if (on) {
+          ctx.shadowColor = "rgba(255, 240, 210, 0.9)";
+          ctx.shadowBlur = cell * 0.25;
+          ctx.fillStyle = "#fff6e4";
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.09)";
+        }
+        ctx.fillText(lb, W / 2 + dx, apY);
+      });
+      ctx.shadowBlur = 0;
 
       // Corner minute dots (clockwise from top-left, QLOCKTWO convention).
       const inset = Math.min(W, H) * 0.035;

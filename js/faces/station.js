@@ -85,8 +85,10 @@
 
       // --- SBB movement timing ---
       const msec = t.s + t.ms / 1000;
-      // Second hand: full revolution in 58.5s, then hold at 12.
-      const secA = Math.min(msec / 58.5, 1) * U.TAU;
+      // Second hand runs slightly fast and holds at 12 until the minute
+      // impulse. The real Mobatime movement pauses a full 1.5s; that read
+      // as a rendering stall on screen, so the hold here is a short beat.
+      const secA = Math.min(msec / 59.4, 1) * U.TAU;
       // Minute hand: impulse snap in the first 350ms of each minute,
       // with a slight spring overshoot.
       const JUMP = 0.35;

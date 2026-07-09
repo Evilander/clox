@@ -16,6 +16,8 @@ Resolution-independent: everything is drawn relative to the window size with
 | ![Nixie](screenshots/nixie.jpg) **Nixie · IN-18** — glass tubes on a walnut base, unlit cathode stacks, honeycomb anode mesh, neon-dot separators | ![VFD](screenshots/vfd.jpg) **VFD · Hi-Fi** — cyan vacuum-fluorescent display behind receiver glass, weekday indicator row, dot-matrix texture |
 | ![Wordgrid](screenshots/wordgrid.jpg) **Wordgrid · Word Clock** — 11×10 letter grid; the time lights up as a sentence, corner dots count the extra minutes | ![Terminal](screenshots/terminal.jpg) **Terminal · CRT** — green phosphor, typed boot sequence, 5×7 pixel-block digits, scanlines, refresh band, blinking cursor |
 | ![Braun](screenshots/braun.jpg) **Braun · Minimal** — Rams-school dial, stick hands, yellow second hand that steps each second with a mechanical overshoot | ![LCD](screenshots/lcd.jpg) **LCD · Digital Watch** — F-91W-style liquid crystal: dark segments with depth shadow, day/date header, resin bezel accents |
+| ![Berlin](screenshots/berlin.jpg) **Berlin · Mengenlehreuhr** — the 1975 set-theory clock: blinking seconds lamp, 5-hour and 1-hour red rows, 5-minute row with red quarters, 1-minute yellow row | ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + seconds sub-dials) with a swinging brass pendulum in a walnut case |
+| ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls on brass spokes, paddle hour hand, elliptical minute tip | ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — modern concentric progress arcs for hours/minutes/seconds with glowing endpoints and a thin digital readout |
 
 ## Run it
 
