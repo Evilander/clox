@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>clox — fullscreen clock screensavers</title>
+<link rel="stylesheet" href="css/style.css">
+<!-- Classic scripts (not ES modules) so this works over file:// with a double-click. -->
+<script defer src="js/util.js"></script>
+<script defer src="js/engine.js"></script>
+<script defer src="js/faces/redline.js"></script>
+<script defer src="js/faces/flip.js"></script>
+<script defer src="js/faces/sweep.js"></script>
+<script defer src="js/faces/station.js"></script>
+<script defer src="js/faces/nixie.js"></script>
+<script defer src="js/faces/vfd.js"></script>
+</head>
+<body>
+<canvas id="clock"></canvas>
+<div id="toast" class="hidden"></div>
+<div id="hint" class="hidden">
+  <span class="k">&larr;/&rarr;</span> switch face &nbsp;·&nbsp;
+  <span class="k">F</span> fullscreen &nbsp;·&nbsp;
+  <span class="k">S</span> seconds &nbsp;·&nbsp;
+  <span class="k">H</span> 12/24h &nbsp;·&nbsp;
+  <span class="k">A</span> auto-cycle &nbsp;·&nbsp;
+  <span class="k">?</span> help
+</div>
+</body>
+</html>
