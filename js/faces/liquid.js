@@ -1,15 +1,34 @@
 /* LIQUID — reactive liquid clock. The pool level IS the minute hand:
- * it rises through the hour and surges back at the top of it. A droplet
- * falls each second and raises a real traveling ripple; glass digits
- * float half-submerged on the waterline; bubbles climb; the liquid's hue
- * drifts around the color wheel over 24 hours. Move the mouse to stir
- * the surface — it ripples back. */
+ * it rises through the hour and swallows the digits entirely by :59
+ * before the rollover surge lets it go. A droplet falls each second and
+ * raises a real traveling ripple; digits glow where submerged; bubbles
+ * climb; mouse movement stirs the surface.
+ * Color: press C to cycle presets (saved), or Auto drifts the hue
+ * around the color wheel over 24 hours. */
 "use strict";
 
 (() => {
+  const PRESETS = [
+    { id: "auto", label: "Auto · 24h drift" },
+    { id: "teal", label: "Tidepool Teal", hue: 172, sat: 70 },
+    { id: "ocean", label: "Deep Ocean", hue: 207, sat: 75 },
+    { id: "violet", label: "Ultraviolet", hue: 268, sat: 72 },
+    { id: "gothic", label: "Gothic Rose", hue: 345, sat: 58, glowHue: 330, glowSat: 90 },
+    { id: "ember", label: "Molten Ember", hue: 22, sat: 85 },
+    { id: "acid", label: "Reactor Acid", hue: 96, sat: 78 }
+  ];
+  const COLOR_KEY = "clox.liquid.color";
+
+  let presetIdx = Math.max(0, PRESETS.findIndex(p => {
+    try { return p.id === localStorage.getItem(COLOR_KEY); } catch { return false; }
+  }));
+  let colorChangedAt = -1e9;
+  let lastDrawTs = -1e9;
+
   const impulses = [];          // {x, t0, amp}
   let lastSec = -1, lastHour = -1;
   const mouse = { x: -1, y: -1, lastT: 0 };
+
   window.addEventListener("mousemove", (e) => {
     const now = performance.now();
     if (now - mouse.lastT > 130 && (Math.abs(e.clientX - mouse.x) > 4 || Math.abs(e.clientY - mouse.y) > 4)) {
@@ -19,6 +38,15 @@
     }
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+  });
+
+  // Face-scoped key: only reacts while this face is being drawn.
+  window.addEventListener("keydown", (e) => {
+    if ((e.key === "c" || e.key === "C") && performance.now() - lastDrawTs < 250) {
+      presetIdx = (presetIdx + 1) % PRESETS.length;
+      colorChangedAt = performance.now();
+      try { localStorage.setItem(COLOR_KEY, PRESETS[presetIdx].id); } catch { }
+    }
   });
 
   const hash = (i) => {
@@ -35,8 +63,7 @@
       const age = (now - im.t0) / 1000;
       if (age < 0 || age > 3) continue;
       const d = Math.abs(x - im.x);
-      const front = 300 * age;
-      const dd = d - front;
+      const dd = d - 300 * age;
       y += im.amp * Math.exp(-(dd * dd) / 1800) * Math.cos(dd * 0.09) * Math.exp(-age * 1.4);
     }
     return y;
@@ -47,10 +74,16 @@
     name: "Liquid · Reactive Pool",
 
     draw(ctx, W, H, d, settings, now) {
+      lastDrawTs = now;
       const t = U.timeParts(d, settings.h24);
-      const tf24 = t.H + t.m / 60;
-      const hue = Math.round((tf24 / 24) * 360);
-      const C = (l, a = 1, s = 70) => `hsla(${hue}, ${s}%, ${l}%, ${a})`;
+
+      const preset = PRESETS[presetIdx];
+      const hue = preset.hue ?? Math.round(((t.H + t.m / 60) / 24) * 360);
+      const sat = preset.sat ?? 70;
+      const gHue = preset.glowHue ?? hue;
+      const gSat = preset.glowSat ?? sat;
+      const C = (l, a = 1) => `hsla(${hue}, ${sat}%, ${l}%, ${a})`;   // body
+      const G = (l, a = 1) => `hsla(${gHue}, ${gSat}%, ${l}%, ${a})`; // glow/digits
 
       // Deep basin.
       let g = ctx.createLinearGradient(0, 0, 0, H);
@@ -59,9 +92,11 @@
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // Level: minute progress through the hour (rises bottom → up).
+      // Level: the waterline climbs the digits through the hour — just
+      // below them at :00, halfway up at :30, fully over them by ~:48
+      // and drowned through :59 (digits span ~0.37H–0.59H).
       const prog = (t.m + t.fs / 60) / 60;
-      const level = H * (0.80 - prog * 0.52);
+      const level = H * (0.66 - prog * 0.36);
 
       // Hour rollover: the pool surges as it lets go.
       if (t.H !== lastHour) {
@@ -84,9 +119,9 @@
       const fp = U.clamp(t.ms / FALL, 0, 1);
       if (fp < 1) {
         const dy = (level - 20) * fp * fp;          // gravity
-        ctx.fillStyle = C(72, 0.95);
+        ctx.fillStyle = G(72, 0.95);
         ctx.save();
-        ctx.shadowColor = C(60);
+        ctx.shadowColor = G(60);
         ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.ellipse(dropX, 14 + dy, 4, 7 + fp * 5, 0, 0, U.TAU);
@@ -118,7 +153,7 @@
       ctx.fillStyle = g;
       ctx.fill();
 
-      // Bubbles rising inside the liquid.
+      // Bubbles + caustic shimmer inside the liquid.
       ctx.save();
       liquidPath();
       ctx.clip();
@@ -127,14 +162,12 @@
         const p = (now * 0.001 * sp + hash(i + 50)) % 1;
         const bx = hash(i + 7) * W + Math.sin(now * 0.001 + i * 2) * 14;
         const by = H - p * (H - level - 10);
-        const br = 2 + hash(i + 13) * 4;
         ctx.strokeStyle = C(70, 0.35 * (1 - p * 0.5));
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.arc(bx, by, br, 0, U.TAU);
+        ctx.arc(bx, by, 2 + hash(i + 13) * 4, 0, U.TAU);
         ctx.stroke();
       }
-      // Caustic shimmer bands under the surface.
       for (let i = 0; i < 3; i++) {
         const cy2 = level + 30 + i * 46;
         g = ctx.createLinearGradient(0, cy2 - 8, 0, cy2 + 8);
@@ -146,11 +179,11 @@
       }
       ctx.restore();
 
-      // Glowing surface line traced along the samples.
+      // Glowing surface line.
       ctx.save();
-      ctx.shadowColor = C(62);
+      ctx.shadowColor = G(62);
       ctx.shadowBlur = 14;
-      ctx.strokeStyle = C(72, 0.95);
+      ctx.strokeStyle = G(72, 0.95);
       ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
@@ -158,42 +191,41 @@
       ctx.stroke();
       ctx.restore();
 
-      // ---- Floating time: glass above the line, luminous below ----
+      // ---- The time: anchored mid-screen so the rising water overtakes
+      // it — glass above the surface, luminous below, drowned by :59. ----
       const cxx = W / 2;
-      const bob = surfaceY(cxx, level, now) - level;
-      const baseY = level + bob;
+      const baseY = H * 0.48 + Math.sin(now * 0.0012) * H * 0.008;
       const fs = Math.min(W * 0.17, H * 0.30);
-      const font = `200 ${fs}px "Segoe UI Light", "Segoe UI", sans-serif`;
       const hs = settings.h24 ? U.pad2(t.H) : String(t.h);
       const str = `${hs}:${U.pad2(t.m)}`;
-      ctx.font = font;
+      ctx.font = `200 ${fs}px "Segoe UI Light", "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       // Glass shell (visible above water).
-      ctx.strokeStyle = C(80, 0.5);
+      ctx.strokeStyle = G(80, 0.5);
       ctx.lineWidth = Math.max(1.5, fs * 0.012);
       ctx.strokeText(str, cxx, baseY);
-      ctx.fillStyle = C(85, 0.10);
+      ctx.fillStyle = G(85, 0.10);
       ctx.fillText(str, cxx, baseY);
       // Submerged glow (clipped to the liquid).
       ctx.save();
       liquidPath();
       ctx.clip();
-      ctx.shadowColor = C(65);
+      ctx.shadowColor = G(65);
       ctx.shadowBlur = fs * 0.18;
-      ctx.fillStyle = C(78, 0.95);
+      ctx.fillStyle = G(78, 0.95);
       ctx.fillText(str, cxx, baseY);
       ctx.restore();
 
-      // Small seconds + AM/PM, floating to the right of the time.
+      // Small seconds + AM/PM beside the time.
       if (settings.seconds) {
         const m = ctx.measureText(str);
         ctx.font = `300 ${fs * 0.24}px "Segoe UI", sans-serif`;
         ctx.textAlign = "left";
-        ctx.fillStyle = C(75, 0.75);
+        ctx.fillStyle = G(75, 0.75);
         ctx.fillText(U.pad2(t.s), cxx + m.width / 2 + fs * 0.08, baseY - fs * 0.26);
         if (!settings.h24) {
-          ctx.fillStyle = C(75, 0.45);
+          ctx.fillStyle = G(75, 0.45);
           ctx.fillText(t.pm ? "PM" : "AM", cxx + m.width / 2 + fs * 0.08, baseY - fs * 0.02);
         }
       }
@@ -207,7 +239,7 @@
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       for (let mm = 0; mm <= 60; mm += 5) {
-        const yy = H * 0.80 - (mm / 60) * H * 0.52;
+        const yy = H * 0.66 - (mm / 60) * H * 0.36;
         const wnd = mm % 15 === 0 ? H * 0.020 : H * 0.010;
         ctx.beginPath();
         ctx.moveTo(gx, yy);
@@ -219,6 +251,18 @@
       // Ceiling drip fixture.
       ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
       ctx.fillRect(0, 0, W, 8);
+
+      // Color-change label (fades after a moment).
+      const since = now - colorChangedAt;
+      if (since < 1800) {
+        ctx.globalAlpha = U.clamp(1 - (since - 1200) / 600, 0, 1);
+        ctx.font = `500 ${Math.max(13, H * 0.022)}px "Segoe UI", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = G(80, 0.9);
+        ctx.fillText(`color · ${preset.label}`, W / 2, H * 0.05);
+        ctx.globalAlpha = 1;
+      }
 
       // Vignette.
       g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.8);

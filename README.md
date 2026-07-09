@@ -19,7 +19,7 @@ Resolution-independent: everything is drawn relative to the window size with
 | ![Berlin](screenshots/berlin.jpg) **Berlin · Mengenlehreuhr** — the 1975 set-theory clock: blinking seconds lamp, 5-hour and 1-hour red rows, 5-minute row with red quarters, 1-minute yellow row | ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + seconds sub-dials) with a swinging brass pendulum in a walnut case |
 | ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls on brass spokes, paddle hour hand, elliptical minute tip | ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — modern concentric progress arcs for hours/minutes/seconds with glowing endpoints and a thin digital readout |
 | ![Ocarina](screenshots/ocarina.jpg) **Ocarina · Hyrule Field** — world clock: real day/night sky with arcing sun and moon, smoke-ringed volcano, blue-roofed castle, blue-ceramic gold-banded dial with rupee markers, and a wandering fairy | ![Grimdark](screenshots/grimdark.jpg) **Grimdark · M41** — brass cog, parchment dial, servo-skull at twelve with burning eyes, blade hands, wax purity seal, rising embers, and a real Imperial datestamp |
-| ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines, longer toward dawn and dusk; moon-shadow and fireflies after dark | ![Liquid](screenshots/liquid.jpg) **Liquid · Reactive Pool** — the water level is the minute hand; a droplet splashes real ripples every second, digits float half-submerged, hue drifts over 24h, and the surface stirs when you move the mouse |
+| ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines, longer toward dawn and dusk; moon-shadow and fireflies after dark | ![Liquid](screenshots/liquid.jpg) **Liquid · Reactive Pool** — the waterline climbs the digits through the hour (halfway up at :30, drowning them by :59); a droplet splashes real ripples every second, the surface stirs when you move the mouse, and `C` cycles color presets (Auto 24h drift, Tidepool Teal, Deep Ocean, Ultraviolet, Gothic Rose, Molten Ember, Reactor Acid) |
 
 ## Run it
 
@@ -37,6 +37,7 @@ While fullscreen, clox requests a screen wake lock so the display stays on.
 | `S` | Toggle seconds |
 | `H` | Toggle 12/24-hour |
 | `A` | Auto-cycle faces every 2 minutes |
+| `C` | Cycle color preset (Liquid face) |
 | `?` | Show help |
 
 Settings and the last face persist in `localStorage`.
