@@ -5,27 +5,30 @@ Fullscreen analog + vintage-digital clock screensavers, rendered on a single
 `index.html` or run `clox.bat` for instant kiosk-mode fullscreen.
 
 Resolution-independent: everything is drawn relative to the window size with
-`devicePixelRatio` scaling, so 1080p, 1440p (2K), and 4K all render crisp.
+`devicePixelRatio` scaling (capped at 2×), so 1080p, 1440p (2K), and 4K all
+render crisp.
 
 ## Faces
 
 | | |
 |---|---|
-| ![Redline](screenshots/redline.jpg) **Redline · 80s LED** — red seven-segment alarm clock: ghost segments, bloom, blinking colon, PM/ALARM indicators, scanlines, floor reflection | ![Flip](screenshots/flip.jpg) **Flip · Solari** — split-flap cards with gravity-eased flap animation, axle pins, AM/PM tag, date line |
-| ![Sweep](screenshots/sweep.jpg) **Sweep · Wall Clock** — brushed-metal bezel, ivory dial, serif numerals, date window, continuous sweep second hand | ![Station](screenshots/station.jpg) **Station · Swiss Railway** — red lollipop second hand sweeps in 58.5s and pauses at 12; minute hand snaps with spring overshoot |
-| ![Nixie](screenshots/nixie.jpg) **Nixie · IN-18** — glass tubes on a walnut base, unlit cathode stacks, honeycomb anode mesh, neon-dot separators | ![VFD](screenshots/vfd.jpg) **VFD · Hi-Fi** — cyan vacuum-fluorescent display behind receiver glass, weekday indicator row, dot-matrix texture |
-| ![Wordgrid](screenshots/wordgrid.jpg) **Wordgrid · Word Clock** — 11×10 letter grid; the time lights up as a sentence, corner dots count the extra minutes | ![Terminal](screenshots/terminal.jpg) **Terminal · CRT** — green phosphor, typed boot sequence, 5×7 pixel-block digits, scanlines, refresh band, blinking cursor |
-| ![Braun](screenshots/braun.jpg) **Braun · Minimal** — Rams-school dial, stick hands, yellow second hand that steps each second with a mechanical overshoot | ![LCD](screenshots/lcd.jpg) **LCD · Digital Watch** — F-91W-style liquid crystal: dark segments with depth shadow, day/date header, resin bezel accents |
-| ![Berlin](screenshots/berlin.jpg) **Berlin · Mengenlehreuhr** — the 1975 set-theory clock: blinking seconds lamp, 5-hour and 1-hour red rows, 5-minute row with red quarters, 1-minute yellow row | ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + seconds sub-dials) with a swinging brass pendulum in a walnut case |
-| ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls on brass spokes, paddle hour hand, elliptical minute tip | ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — modern concentric progress arcs for hours/minutes/seconds with glowing endpoints and a thin digital readout |
-| ![Ocarina](screenshots/ocarina.jpg) **Ocarina · Hyrule Field** — world clock: real day/night sky with arcing sun and moon, smoke-ringed volcano, blue-roofed castle, blue-ceramic gold-banded dial with rupee markers, and a wandering fairy | ![Grimdark](screenshots/grimdark.jpg) **Grimdark · M41** — brass cog, parchment dial, servo-skull at twelve with burning eyes, blade hands, wax purity seal, rising embers, and a real Imperial datestamp |
-| ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines, longer toward dawn and dusk; moon-shadow and fireflies after dark | ![Liquid](screenshots/liquid.jpg) **Liquid · Reactive Pool** — the waterline climbs the digits through the hour (halfway up at :30, drowning them by :59); a droplet splashes real ripples every second, the surface stirs when you move the mouse, and `C` cycles color presets (Auto 24h drift, Tidepool Teal, Deep Ocean, Ultraviolet, Gothic Rose, Molten Ember, Reactor Acid) |
-| ![Tifo](screenshots/tifo.jpg) **Tifo · The Crowd Is The Clock** — ~2,000 simulated fans hold up cards that spell the time, card-stunt style; the stadium wave laps the stand exactly once per minute (the wave front IS the second hand); minute changes cascade through the crowd with real reaction-time lag, laggards, and the occasional fan holding the wrong card; on the hour: confetti, camera flashes, and a new tifo colorway | ![Weaver](screenshots/weaver.jpg) **Weaver · Orb Spider** — a spider spins the time: 12 silk spokes are the hours (the current one gleams), and she lays one capture-spiral segment per minute — 5 laps × 12 sectors — so the web's completeness IS the minute hand; dew condenses each second and slides down the threads; on the hour a gust tears the finished web loose and she begins again, under a moon showing its real phase |
+| ![Redline](screenshots/redline.jpg) **Redline · 80s LED** — red seven-segment clock radio: ghost segments, bloom, blinking colon, PM/ALARM indicators, segment afterglow on digit changes, snooze-bar enclosure with speaker grille, floor reflection | ![Flip](screenshots/flip.jpg) **Flip · Solari** — split-flap clock with per-digit modules that cascade on rollovers, gravity-eased flaps with visible card thickness, settle bounce, worn corner chips, AM/PM tag, date line |
+| ![Sweep](screenshots/sweep.jpg) **Sweep · Wall Clock** — brushed-metal bezel with radial scratch anisotropy, ivory dial, serif numerals, date window that rolls over at midnight, hands whose shadows float at different heights, continuous sweep second hand | ![Station](screenshots/station.jpg) **Station · Swiss Railway** — red lollipop second hand sweeps the dial in the authentic 58.5s and holds at 12 for the minute impulse; the minute hand snaps with spring overshoot and a housing shiver |
+| ![Nixie](screenshots/nixie.jpg) **Nixie · IN-18** — glass tubes on a grained walnut base, unlit cathode stacks, DPR-crisp honeycomb anode mesh, ionization crossfade between digits, tube pins, neon-dot separators | ![VFD](screenshots/vfd.jpg) **VFD · Hi-Fi** — cyan vacuum-fluorescent display behind receiver glass, heater filament wires, phosphor persistence on digit changes, weekday indicator row, cached dot-matrix texture |
+| ![Wordgrid](screenshots/wordgrid.jpg) **Wordgrid · Word Clock** — 11×10 letter grid; the time lights up as a sentence, new letters igniting in reading order; aperture plates behind every cell; corner dots count the extra minutes | ![Terminal](screenshots/terminal.jpg) **Terminal · CRT** — green phosphor with true barrel distortion, typed boot sequence, 5×7 pixel-block digits with retention ghosts, idle diagnostic chatter, scanlines, refresh band, blinking cursor |
+| ![Braun](screenshots/braun.jpg) **Braun · Minimal** — Rams-school dial on paper-grain stock, stick hands, yellow second hand that steps each second with a two-stage mechanical recoil | ![LCD](screenshots/lcd.jpg) **LCD · Digital Watch** — F-91W-style liquid crystal: dark segments with depth shadow and change ghosting, viewing-angle shading, day/date header, resin bezel with screws, lugs, and accent text |
+| ![Berlin](screenshots/berlin.jpg) **Berlin · Mengenlehreuhr** — the 1975 set-theory clock in its cream steel housing: blinking seconds lamp, 5-hour and 1-hour red rows, 5-minute row with red quarters, 1-minute yellow row; lamps warm up like neon and sag when the relays fire | ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + dead-beat seconds sub-dials) with a lyre pendulum swinging behind the bevelled glass of a grained walnut case |
+| ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls casting wall shadows from one light source, brass ferrules and spokes, paddle hour hand, elliptical minute tip | ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — concentric comet-tail arcs for hours/minutes/seconds with glowing endpoints, rollover pulses, hairline tick ring, and a thin digital readout |
+| ![Ocarina](screenshots/ocarina.jpg) **Ocarina · Hyrule Field** — world clock: real day/night sky with arcing sun and properly-masked crescent moon, smoke-ringed volcano with night embers, blue-roofed castle with flickering windows, gold-banded ceramic dial, and a fairy trailing sparkles | ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines; dawn and dusk blend through golden hour, clouds drift across the day, moon-shadow and fireflies after dark |
+| ![Liquid](screenshots/liquid.jpg) **Liquid · Reactive Pool** — the waterline climbs the digits through the hour (halfway up at :30, drowning them by :59) and lets go in a 3-second release at the top of the hour; a droplet splashes real ripples every second, the surface stirs when you move the mouse, and `C` cycles color presets | ![Tifo](screenshots/tifo.jpg) **Tifo · The Crowd Is The Clock** — ~2,000 simulated fans hold up cards that spell the time, card-stunt style; the stadium wave laps the stand exactly once per minute (the wave front IS the second hand); minute changes cascade with real reaction-time lag and the occasional wrong card; hourly confetti + camera flashes + a new colorway |
+| ![Weaver](screenshots/weaver.jpg) **Weaver · Orb Spider** — a spider spins the time: 12 silk spokes are the hours (the current one gleams), one capture-spiral segment laid per minute — 5 laps × 12 sectors — so the web's completeness IS the minute hand; dew slides down the threads each second; on the hour a gust tears the web loose and she begins again under a real-phase moon | ![Hourglass](screenshots/hourglass.jpg) **Hourglass · One Minute of Sand** — the top bulb drains over exactly 60 seconds through a live stream into a leaning pile, then the whole glass flips at the top of the minute; brass plaque engraves the time and date |
+| ![Tetris](screenshots/tetris.jpg) **Tetris · One Piece Per Second** — falling bars assemble HH:MM as a multicolor block stack over the minute; changed digits line-clear flash and burst, then rebuild; LEVEL is the hour, LINES is minutes-today, SCORE is seconds-today | ![Scope](screenshots/scope.jpg) **Scope · Vector Phosphor** — an XY oscilloscope traces the digits as vector strokes onto real fading phosphor, with a beam dot racing the trace, graticule, front-panel knobs, and a corner Lissajous figure whose phase turns once per minute |
 
 ## Run it
 
 - **Kiosk / screensaver mode:** double-click `clox.bat` (Chrome, falls back to Edge). `Alt+F4` or `Ctrl+W` to exit.
 - **Normal:** open `index.html` in any Chromium browser, press `F` or click for fullscreen.
+- **Pick a face from anywhere:** press `G` for the live gallery — every face rendering as a tile.
 
 While fullscreen, clox requests a screen wake lock so the display stays on.
 
@@ -33,15 +36,26 @@ While fullscreen, clox requests a screen wake lock so the display stays on.
 
 | Key | Action |
 |---|---|
-| `←` / `→` / `Space` | Switch face |
+| `←` / `→` / `Space` | Switch face (with crossfade) |
+| `1`-`9`, `0` | Jump to the first ten faces |
+| `G` | Live gallery of all faces (arrows navigate, `↵` select, `Esc` close) |
 | `F` / click | Toggle fullscreen |
 | `S` | Toggle seconds |
 | `H` | Toggle 12/24-hour |
 | `A` | Auto-cycle faces every 2 minutes |
+| `N` | Night dim (off → low → high) |
+| `B` | Hourly chime (two soft tones; off by default) |
 | `C` | Cycle color preset (Liquid face) |
+| `P` | Save a PNG snapshot of the current face |
 | `?` | Show help |
 
-Settings and the last face persist in `localStorage`.
+Settings and the last face persist in `localStorage`. The tab title always
+shows the time, so it reads as a clock even minimized.
+
+### URL parameters
+
+Kiosk shortcuts override saved settings once:
+`index.html?face=nixie&h24=1&seconds=0&cycle=1`
 
 ## Use as a Windows screensaver
 
@@ -59,14 +73,18 @@ native wrapper. The practical setups:
 index.html          script tags (classic, not ESM — file:// safe)
 css/style.css       canvas fill, toast/hint overlays, cursor hiding
 js/util.js          registry, easings, time parts, seven-segment renderer
-js/engine.js        rAF loop, DPR resize, input, settings, wake lock
+js/engine.js        rAF loop, DPR resize, input, settings, wake lock,
+                    face lifecycle, gallery, crossfade, dim, chime
 js/faces/*.js       one file per face; each calls CLOX.register({id, name, draw})
 ```
 
 Adding a face: create `js/faces/myface.js`, call
 `CLOX.register({ id, name, draw(ctx, W, H, date, settings, now) })`,
 add a `<script defer>` tag to `index.html`. `W`/`H` are CSS pixels
-(DPR already applied to the context transform).
+(DPR already applied to the context transform). Faces may also define
+optional `enter()` / `leave()` hooks — the engine calls them on face
+switches, which is where a face should attach and detach any listeners.
+The gallery renders faces at tile size with `settings.preview = true`.
 
 Classic scripts instead of ES modules is deliberate: Chrome blocks module
 imports over `file://`, and a screensaver must work with a double-click.

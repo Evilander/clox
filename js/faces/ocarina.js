@@ -85,6 +85,48 @@
     ctx.restore();
   }
 
+  // Fairy motion trail: short ring buffer of recent positions.
+  let fairyTrail = [], lastFairySample = -1e9;
+
+  // Crescent moon sprite: rendered once per size into an offscreen canvas,
+  // lit disc + glow with the phase "bite" cut by destination-out — a true
+  // transparent cutout, so whatever is actually behind it (sky, stars,
+  // dusk gradient) shows through instead of a fixed sky-color patch.
+  let moonCache = { key: "", canvas: null, cs: 0 };
+
+  function moonSprite(W, H) {
+    const r = Math.min(W, H) * 0.04;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const key = `${Math.round(r * 100)}|${dpr}`;
+    if (moonCache.key === key) return moonCache;
+    // The shadowBlur glow (blur radius r) needs room to fade to fully
+    // transparent before the canvas edge, or its soft halo gets clipped
+    // into a visible box against the sky — so the sprite is sized well
+    // beyond the bare disc, not just tight around it.
+    const cs = Math.ceil(r * 6);
+    const c = document.createElement("canvas");
+    c.width = Math.max(2, Math.ceil(cs * dpr));
+    c.height = Math.max(2, Math.ceil(cs * dpr));
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    const mcx = cs / 2;
+    g.shadowColor = "#f0e6b0";
+    g.shadowBlur = r;
+    g.fillStyle = "#f4ecc2";
+    g.beginPath();
+    g.arc(mcx, mcx, r, 0, U.TAU);
+    g.fill();
+    g.shadowBlur = 0;
+    g.globalCompositeOperation = "destination-out";
+    g.fillStyle = "#000";
+    g.beginPath();
+    g.arc(mcx + r * 0.42, mcx - r * 0.18, r * 0.82, 0, U.TAU);
+    g.fill();
+    g.globalCompositeOperation = "source-over";
+    moonCache = { key, canvas: c, cs };
+    return moonCache;
+  }
+
   CLOX.register({
     id: "ocarina",
     name: "Ocarina · Hyrule Field",
@@ -146,21 +188,9 @@
       }
       const moonP = tf >= 18 ? (tf - 18) / 12 : (tf + 6) / 12;
       if (moonP > 0 && moonP < 1 && (tf >= 18 || tf < 6)) {
+        const ms = moonSprite(W, H);
         body(moonP, (x, y) => {
-          const r = Math.min(W, H) * 0.04;
-          ctx.save();
-          ctx.shadowColor = "#f0e6b0";
-          ctx.shadowBlur = r;
-          ctx.fillStyle = "#f4ecc2";
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, U.TAU);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = top;
-          ctx.beginPath();
-          ctx.arc(x + r * 0.42, y - r * 0.18, r * 0.82, 0, U.TAU);
-          ctx.fill();
-          ctx.restore();
+          ctx.drawImage(ms.canvas, x - ms.cs / 2, y - ms.cs / 2, ms.cs, ms.cs);
         });
       }
 
@@ -171,12 +201,17 @@
       const rock = [96, 74, 58];
       // Smoke ring puffs, split so the ring truly encircles the cone:
       // back half drawn before the rock, front half after.
-      const ringY = mTop + H * 0.055, ringRx = mw * 0.62, ringRy = H * 0.026;
+      const ringPulse = 1 + 0.03 * Math.sin(now * U.TAU / 9000);
+      const ringY = mTop + H * 0.055, ringRx = mw * 0.62 * ringPulse, ringRy = H * 0.026 * ringPulse;
       const puffs = [];
       for (let i = 0; i < 26; i++) {
         const a = (i / 26) * U.TAU;
+        // Subtle windward lean: a slow per-puff shear so the ring drifts
+        // instead of just breathing in place.
+        const drift = Math.sin(now * 0.00028 + i) * H * 0.004
+          + H * 0.006 * ((now * 0.00004 + i * 0.13) % 1 - 0.5);
         puffs.push({
-          x: mx + Math.cos(a) * ringRx * (1 + 0.05 * hash(i + 70)),
+          x: mx + Math.cos(a) * ringRx * (1 + 0.05 * hash(i + 70)) + drift,
           y: ringY + Math.sin(a) * ringRy,
           r: (H * 0.022) * (0.9 + 0.4 * hash(i + 40))
             * (1 + 0.08 * Math.sin(now * 0.0012 + i * 1.9)),
@@ -223,6 +258,19 @@
       }
       // Front half of the smoke ring wraps over the cone.
       drawPuffs(true);
+
+      // Night embers rising from the crater lip, staggered on a ~2.8s cycle.
+      if (nf > 0.3) {
+        const craterX = mx, craterY = mTop + H * 0.02, period = 2800;
+        for (let i = 0; i < 5; i++) {
+          const cyc = ((now + hash(i + 900) * period) % period) / period;
+          const ex = craterX + (hash(i + 500) - 0.5) * mw * 0.14
+            + Math.sin(cyc * Math.PI * 3 + i * 1.7) * H * 0.006;
+          const ey = craterY - cyc * H * 0.06;
+          ctx.fillStyle = `rgba(255, 150, 50, ${(0.85 * (1 - cyc)).toFixed(3)})`;
+          ctx.fillRect(ex - 1, ey - 1, 2, 2);
+        }
+      }
 
       // ---- Castle: white walls, blue conical roofs, on its own rise. ----
       const kx = W * 0.155, kb = baseY + H * 0.005;
@@ -271,12 +319,17 @@
       ctx.lineTo(kx, kb - kh * 1.50);
       ctx.closePath();
       ctx.fill();
-      // Window slits, lit at night.
-      ctx.fillStyle = nf > 0.4 ? "rgba(255, 214, 120, 0.85)" : "rgba(60, 56, 66, 0.8)";
-      for (const [wx, wy] of [[kx, kb - kh * 0.72], [kx, kb - kh * 0.45],
-        [towerXs[0], kb - kh * 0.55], [towerXs[1], kb - kh * 0.55]]) {
+      // Window slits, lit at night with a tiny independent flicker each.
+      [[kx, kb - kh * 0.72], [kx, kb - kh * 0.45],
+        [towerXs[0], kb - kh * 0.55], [towerXs[1], kb - kh * 0.55]].forEach(([wx, wy], wi) => {
+        if (nf > 0.4) {
+          const flick = 0.85 * (0.9 + 0.1 * Math.sin(now * 0.006 + wi * 2.4));
+          ctx.fillStyle = `rgba(255, 214, 120, ${flick.toFixed(3)})`;
+        } else {
+          ctx.fillStyle = "rgba(60, 56, 66, 0.8)";
+        }
         ctx.fillRect(wx - kw * 0.045, wy, kw * 0.09, kh * 0.10);
-      }
+      });
 
       // ---- Rolling grass (drawn last: seats everything into the field) ----
       const hillTopY = (x) => horizonY + Math.sin(x * 0.004 + 2) * H * 0.012;
@@ -424,6 +477,27 @@
       const fx2 = cx + Math.cos(fa) * fr * 1.25;
       const fy2 = cy + Math.sin(fa) * fr * 0.8 + Math.sin(now * 0.004) * R * 0.03;
       const orb = R * 0.035;
+
+      // Trail: sample position every ~60ms, draw oldest-first before the body.
+      if (now - lastFairySample >= 60) {
+        lastFairySample = now;
+        fairyTrail.push({ x: fx2, y: fy2 });
+        if (fairyTrail.length > 9) fairyTrail.shift();
+      }
+      const trailN = fairyTrail.length;
+      for (let i = 0; i < trailN; i++) {
+        const k = trailN > 1 ? i / (trailN - 1) : 1;
+        const p = fairyTrail[i];
+        ctx.save();
+        ctx.shadowColor = "rgba(180, 220, 255, 0.8)";
+        ctx.shadowBlur = orb * 0.3;
+        ctx.fillStyle = `rgba(190, 225, 255, ${U.lerp(0.35, 0.04, k).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, U.lerp(orb * 0.5, orb * 0.12, k), 0, U.TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.save();
       const flap = Math.sin(now * 0.03) * 0.6;
       ctx.fillStyle = "rgba(220, 240, 255, 0.55)";

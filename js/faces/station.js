@@ -31,10 +31,15 @@
     id: "station",
     name: "Station · Swiss Railway",
 
-    draw(ctx, W, H, d) {
+    draw(ctx, W, H, d, settings) {
       const t = U.timeParts(d, true);
       const cx = W / 2, cy = H / 2;
       const R = Math.min(W, H) * 0.45;
+
+      // SBB movement timing, computed up front — the impulse vibration
+      // below needs it before the dial is drawn.
+      const msec = t.s + t.ms / 1000;
+      const JUMP = 0.35;
 
       // Platform-dark background.
       let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
@@ -62,6 +67,19 @@
       ctx.lineWidth = R * 0.006;
       ctx.stroke();
 
+      // Impulse vibration: the movement (dial, markers, hands) shivers
+      // briefly as the minute hand snaps, decaying to nothing by 350ms.
+      // The fixed case and glass above are drawn outside this and don't
+      // move with it.
+      ctx.save();
+      if (msec < JUMP) {
+        const decay = 1 - msec / JUMP;
+        ctx.translate(
+          Math.sin(msec * 1000 * 0.09) * R * 0.0022 * decay,
+          Math.cos(msec * 1000 * 0.075) * R * 0.0018 * decay
+        );
+      }
+
       // White dial.
       const FR = R * 0.93;
       g = ctx.createRadialGradient(0, -FR * 0.2, 0, 0, 0, FR);
@@ -84,14 +102,8 @@
       }
 
       // --- SBB movement timing ---
-      const msec = t.s + t.ms / 1000;
-      // Second hand runs slightly fast and holds at 12 until the minute
-      // impulse. The real Mobatime movement pauses a full 1.5s; that read
-      // as a rendering stall on screen, so the hold here is a short beat.
-      const secA = Math.min(msec / 59.4, 1) * U.TAU;
       // Minute hand: impulse snap in the first 350ms of each minute,
       // with a slight spring overshoot.
-      const JUMP = 0.35;
       let minuteVal;
       if (msec < JUMP) {
         minuteVal = (t.m - 1) + U.easeOutBack(msec / JUMP);
@@ -113,23 +125,31 @@
       shadow(() => hand(ctx, hourA, FR * 0.60, R * 0.058, R * 0.042, R * 0.14, "#1a1a1a"));
       shadow(() => hand(ctx, minA, FR * 0.885, R * 0.048, R * 0.028, R * 0.16, "#1a1a1a"));
 
-      // Red second hand: thin rod ending in the lollipop disc.
-      shadow(() => {
-        ctx.save();
-        ctx.rotate(secA);
-        ctx.fillStyle = "#eb0000";
-        ctx.fillRect(-R * 0.008, -FR * 0.62, R * 0.016, FR * 0.62 + R * 0.19);
-        ctx.beginPath();
-        ctx.arc(0, -FR * 0.62, R * 0.062, 0, U.TAU);
-        ctx.fill();
-        ctx.restore();
-      });
+      // Red second hand: thin rod ending in the lollipop disc. Sweeps in
+      // 58.5s flat, then parks at 12 for a full 1.5s until the minute
+      // impulse — the real Mobatime behavior, not a rendering shortcut.
+      // The 1.5s hold is intentional and authentic.
+      if (settings.seconds) {
+        const secA = Math.min(msec / 58.5, 1) * U.TAU;
+        shadow(() => {
+          ctx.save();
+          ctx.rotate(secA);
+          ctx.fillStyle = "#eb0000";
+          ctx.fillRect(-R * 0.008, -FR * 0.62, R * 0.016, FR * 0.62 + R * 0.19);
+          ctx.beginPath();
+          ctx.arc(0, -FR * 0.62, R * 0.062, 0, U.TAU);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
 
       // Center cap.
       ctx.beginPath();
       ctx.arc(0, 0, R * 0.026, 0, U.TAU);
       ctx.fillStyle = "#eb0000";
       ctx.fill();
+
+      ctx.restore(); // end impulse vibration
 
       // Glass highlight.
       ctx.beginPath();
@@ -138,6 +158,13 @@
       g = ctx.createRadialGradient(-FR * 0.5, -FR * 0.55, 0, -FR * 0.5, -FR * 0.55, FR * 1.3);
       g.addColorStop(0, "rgba(255, 255, 255, 0.20)");
       g.addColorStop(0.3, "rgba(255, 255, 255, 0.04)");
+      g.addColorStop(0.55, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      // Second, fainter highlight, lower-right.
+      g = ctx.createRadialGradient(FR * 0.4, FR * 0.5, 0, FR * 0.4, FR * 0.5, FR * 1.3);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.05)");
+      g.addColorStop(0.3, "rgba(255, 255, 255, 0.01)");
       g.addColorStop(0.55, "rgba(255, 255, 255, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(-FR, -FR, FR * 2, FR * 2);

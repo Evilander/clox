@@ -23,31 +23,29 @@
     try { return p.id === localStorage.getItem(COLOR_KEY); } catch { return false; }
   }));
   let colorChangedAt = -1e9;
-  let lastDrawTs = -1e9;
 
   const impulses = [];          // {x, t0, amp}
-  let lastSec = -1, lastHour = -1;
+  let lastSec = -1, lastHour = -1, releaseT0 = -1e9;
   const mouse = { x: -1, y: -1, lastT: 0 };
 
-  window.addEventListener("mousemove", (e) => {
+  /* Listeners are attached only while this face is active — the engine
+   * calls enter()/leave() on face switches. */
+  function onMove(e) {
     const now = performance.now();
     if (now - mouse.lastT > 130 && (Math.abs(e.clientX - mouse.x) > 4 || Math.abs(e.clientY - mouse.y) > 4)) {
       mouse.lastT = now;
       impulses.push({ x: e.clientX, t0: now, amp: 10 });
-      if (impulses.length > 24) impulses.shift();
     }
     mouse.x = e.clientX;
     mouse.y = e.clientY;
-  });
-
-  // Face-scoped key: only reacts while this face is being drawn.
-  window.addEventListener("keydown", (e) => {
-    if ((e.key === "c" || e.key === "C") && performance.now() - lastDrawTs < 250) {
+  }
+  function onKey(e) {
+    if (e.key === "c" || e.key === "C") {
       presetIdx = (presetIdx + 1) % PRESETS.length;
       colorChangedAt = performance.now();
       try { localStorage.setItem(COLOR_KEY, PRESETS[presetIdx].id); } catch { }
     }
-  });
+  }
 
   const hash = (i) => {
     const x = Math.sin(i * 379.9 + 53.7) * 43758.5453;
@@ -73,9 +71,24 @@
     id: "liquid",
     name: "Liquid · Reactive Pool",
 
+    enter() {
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("keydown", onKey);
+    },
+    leave() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("keydown", onKey);
+    },
+
     draw(ctx, W, H, d, settings, now) {
-      lastDrawTs = now;
       const t = U.timeParts(d, settings.h24);
+
+      // Ripples decay after 3s — prune them and hard-cap the pool so the
+      // hourly surge can never grow the array without bound.
+      for (let i = impulses.length - 1; i >= 0; i--) {
+        if ((now - impulses[i].t0) / 1000 > 3) impulses.splice(i, 1);
+      }
+      if (impulses.length > 30) impulses.splice(0, impulses.length - 30);
 
       const preset = PRESETS[presetIdx];
       const hue = preset.hue ?? Math.round(((t.H + t.m / 60) / 24) * 360);
@@ -96,16 +109,24 @@
       // below them at :00, halfway up at :30, fully over them by ~:48
       // and drowned through :59 (digits span ~0.37H–0.59H).
       const prog = (t.m + t.fs / 60) / 60;
-      const level = H * (0.66 - prog * 0.36);
+      let level = H * (0.66 - prog * 0.36);
 
-      // Hour rollover: the pool surges as it lets go.
+      // Hour rollover: the pool surges as it lets go. Only within the
+      // first minute — returning to this face hours later must not replay
+      // the release long after the actual rollover.
       if (t.H !== lastHour) {
-        if (lastHour !== -1) {
+        if (lastHour !== -1 && t.m === 0) {
+          releaseT0 = now;
           for (let i = 0; i < 6; i++) {
             impulses.push({ x: (i + 0.5) * (W / 6), t0: now + i * 60, amp: 26 });
           }
         }
         lastHour = t.H;
+      }
+      // The water lets go over ~3s instead of teleporting to the floor.
+      const rel = (now - releaseT0) / 3000;
+      if (rel >= 0 && rel < 1) {
+        level = U.lerp(H * 0.30, level, U.easeInOutCubic(rel));
       }
 
       // One droplet per second: falls from the ceiling, then ripples.
@@ -217,17 +238,19 @@
       ctx.fillText(str, cxx, baseY);
       ctx.restore();
 
-      // Small seconds + AM/PM beside the time.
+      // Small seconds + AM/PM beside the time (AM/PM shows even with
+      // seconds hidden — 12h mode must always carry its period marker).
+      const mtw = ctx.measureText(str).width;
+      ctx.font = `300 ${fs * 0.24}px "Segoe UI", sans-serif`;
+      ctx.textAlign = "left";
       if (settings.seconds) {
-        const m = ctx.measureText(str);
-        ctx.font = `300 ${fs * 0.24}px "Segoe UI", sans-serif`;
-        ctx.textAlign = "left";
         ctx.fillStyle = G(75, 0.75);
-        ctx.fillText(U.pad2(t.s), cxx + m.width / 2 + fs * 0.08, baseY - fs * 0.26);
-        if (!settings.h24) {
-          ctx.fillStyle = G(75, 0.45);
-          ctx.fillText(t.pm ? "PM" : "AM", cxx + m.width / 2 + fs * 0.08, baseY - fs * 0.02);
-        }
+        ctx.fillText(U.pad2(t.s), cxx + mtw / 2 + fs * 0.08, baseY - fs * 0.26);
+      }
+      if (!settings.h24) {
+        ctx.fillStyle = G(75, 0.45);
+        ctx.fillText(t.pm ? "PM" : "AM", cxx + mtw / 2 + fs * 0.08,
+          baseY - (settings.seconds ? fs * 0.02 : fs * 0.26));
       }
 
       // Minute gauge on the right edge: the surface is the needle.
@@ -238,9 +261,10 @@
       ctx.font = `500 ${Math.max(10, H * 0.014)}px "Segoe UI", sans-serif`;
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
+      const gu = Math.min(W, H);
       for (let mm = 0; mm <= 60; mm += 5) {
         const yy = H * 0.66 - (mm / 60) * H * 0.36;
-        const wnd = mm % 15 === 0 ? H * 0.020 : H * 0.010;
+        const wnd = mm % 15 === 0 ? gu * 0.020 : gu * 0.010;
         ctx.beginPath();
         ctx.moveTo(gx, yy);
         ctx.lineTo(gx + wnd, yy);

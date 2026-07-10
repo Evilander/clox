@@ -1,6 +1,7 @@
 /* WORDGRID — word clock (QLOCKTWO-style). An 11×10 letter grid where the
- * current time lights up as a sentence ("IT IS HALF PAST TEN"), corner
- * dots for the +1..+4 minutes between five-minute steps. */
+ * current time lights up as a sentence ("IT IS HALF PAST TEN"), letters
+ * igniting in reading order as the phrase changes, corner dots for the
+ * +1..+4 minutes between five-minute steps. */
 "use strict";
 
 (() => {
@@ -52,19 +53,94 @@
     return { words, extraMin: t.m - base };
   }
 
+  // Per-cell ignition/cooldown state, plus a cache of the last-lit phrase so
+  // stagger order is only recomputed when the sentence actually changes.
+  let cellState = null;
+  let prevLitSet = new Set();
+  let lastPhraseKey = null;
+
+  function cellK(cs, now) {
+    const age = now - cs.t0 - cs.delay;
+    if (cs.on) {
+      if (age <= 0) return 0;
+      if (age >= 160) return 1;
+      return U.easeOutCubic(age / 160);
+    }
+    if (age <= 0) return 1;
+    if (age >= 450) return 0;
+    return 1 - age / 450;
+  }
+
+  /* Cooling tint: lerp from lit cream (#fff6e4) toward the dim baseline. */
+  function cellColor(k) {
+    const gc = Math.round(U.lerp(255, 246, k));
+    const bc = Math.round(U.lerp(255, 228, k));
+    const a = U.lerp(0.09, 1, k);
+    return `rgba(255, ${gc}, ${bc}, ${a})`;
+  }
+
+  // Aperture plates: a faint rounded-square backing behind every cell,
+  // static per viewport size — rendered once to an offscreen canvas.
+  let plateCache = { key: "", canvas: null };
+  function aperturePlates(W, H, cell, gx, gy) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const key = `${Math.round(W)}x${Math.round(H)}@${dpr}`;
+    if (plateCache.key === key) return plateCache.canvas;
+    const c = document.createElement("canvas");
+    c.width = Math.max(2, Math.round(W * dpr));
+    c.height = Math.max(2, Math.round(H * dpr));
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    g.fillStyle = "rgba(255, 255, 255, 0.022)";
+    const r = cell * 0.16, inset = cell * 0.06;
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 11; col++) {
+        const x = gx + col * cell - cell / 2 + inset;
+        const y = gy + row * cell - cell / 2 + inset;
+        U.roundRect(g, x, y, cell - inset * 2, cell - inset * 2, r);
+        g.fill();
+      }
+    }
+    plateCache = { key, canvas: c };
+    return c;
+  }
+
   CLOX.register({
     id: "wordgrid",
     name: "Wordgrid · Word Clock",
 
-    draw(ctx, W, H, d, settings) {
+    draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, true);
       const { words, extraMin } = phrase(t);
 
-      // Which cells are lit.
       const lit = new Set();
       for (const w of words) {
         const [r, c0, len] = W_[w];
         for (let i = 0; i < len; i++) lit.add(r * 11 + c0 + i);
+      }
+
+      // Ignition bookkeeping: only touch state when the sentence changes.
+      const phraseKey = words.join(",");
+      if (lastPhraseKey === null) {
+        cellState = [];
+        for (let i = 0; i < 110; i++) cellState.push({ on: lit.has(i), t0: -1e9, delay: 0 });
+        prevLitSet = lit;
+        lastPhraseKey = phraseKey;
+      } else if (phraseKey !== lastPhraseKey) {
+        const newlyLit = [];
+        for (let i = 0; i < 110; i++) {
+          if (lit.has(i) && !prevLitSet.has(i)) newlyLit.push(i);
+        }
+        newlyLit.forEach((i, rank) => {
+          cellState[i] = { on: true, t0: now, delay: rank * 28 };
+        });
+        for (let i = 0; i < 110; i++) {
+          if (!lit.has(i) && prevLitSet.has(i)) {
+            cellState[i] = { on: false, t0: now, delay: 0 };
+          }
+        }
+        prevLitSet = lit;
+        lastPhraseKey = phraseKey;
       }
 
       // Near-black slate background.
@@ -78,25 +154,28 @@
       const gx = (W - cell * 11) / 2 + cell / 2;
       const gy = (H - cell * 10) / 2 + cell / 2;
 
+      ctx.drawImage(aperturePlates(W, H, cell, gx, gy), 0, 0, W, H);
+
       ctx.font = `600 ${cell * 0.52}px "Segoe UI", system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
       for (let r = 0; r < 10; r++) {
         for (let c = 0; c < 11; c++) {
+          const idx = r * 11 + c;
           const x = gx + c * cell, y = gy + r * cell;
-          if (lit.has(r * 11 + c)) {
+          const k = cellK(cellState[idx], now);
+          if (k > 0) {
             ctx.shadowColor = "rgba(255, 240, 210, 0.9)";
-            ctx.shadowBlur = cell * 0.35;
-            ctx.fillStyle = "#fff6e4";
-            ctx.fillText(GRID[r][c], x, y);
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = cell * 0.35 * k;
           } else {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.09)";
-            ctx.fillText(GRID[r][c], x, y);
+            ctx.shadowBlur = 0;
           }
+          ctx.fillStyle = cellColor(k);
+          ctx.fillText(GRID[r][c], x, y);
         }
       }
+      ctx.shadowBlur = 0;
 
       // AM / PM indicator below the grid — the active one lights up.
       ctx.font = `600 ${cell * 0.34}px "Segoe UI", system-ui, sans-serif`;
@@ -114,12 +193,15 @@
       });
       ctx.shadowBlur = 0;
 
-      // Corner minute dots (clockwise from top-left, QLOCKTWO convention).
-      const inset = Math.min(W, H) * 0.035;
+      // Corner minute dots, pinned to the grid's own bounding box (clockwise
+      // from top-left) rather than the viewport corners.
+      const gLeft = gx - cell / 2, gTop = gy - cell / 2;
+      const gRight = gLeft + cell * 11, gBottom = gTop + cell * 10;
+      const dOff = cell * 0.9;
       const dotR = cell * 0.07;
       const corners = [
-        [inset, inset], [W - inset, inset],
-        [W - inset, H - inset], [inset, H - inset]
+        [gLeft - dOff, gTop - dOff], [gRight + dOff, gTop - dOff],
+        [gRight + dOff, gBottom + dOff], [gLeft - dOff, gBottom + dOff]
       ];
       corners.forEach(([x, y], i) => {
         ctx.beginPath();
@@ -136,10 +218,10 @@
         ctx.shadowBlur = 0;
       });
 
-      // Optional seconds: a hairline progress line along the bottom edge.
+      // Optional seconds: a hairline progress line directly under the grid.
       if (settings.seconds) {
-        ctx.fillStyle = "rgba(255, 246, 228, 0.28)";
-        ctx.fillRect(0, H - Math.max(2, H * 0.003), W * (t.fs / 60), Math.max(2, H * 0.003));
+        ctx.fillStyle = "rgba(255, 246, 228, 0.25)";
+        ctx.fillRect(gLeft, gBottom + cell * 0.55, (cell * 11) * (t.fs / 60), Math.max(2, cell * 0.03));
       }
     }
   });

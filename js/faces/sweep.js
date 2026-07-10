@@ -4,6 +4,11 @@
 "use strict";
 
 (() => {
+  const hash = (i) => {
+    const x = Math.sin(i * 157.3 + 71.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
   function hand(ctx, angle, len, wBase, wTip, color, tail = 0) {
     ctx.save();
     ctx.rotate(angle);
@@ -18,12 +23,58 @@
     ctx.restore();
   }
 
+  // Brushed-bezel scratch texture is static per size — render once to an
+  // offscreen canvas instead of stroking ~200 hairlines every frame.
+  let bezelCache = { key: "", canvas: null };
+  let dateRoll = { lastDate: null, prevDate: null, t0: 0 };
+
+  function bezelTexture(R, FR) {
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    const key = `${Math.round(R)}@${scale}`;
+    if (bezelCache.key === key) return bezelCache.canvas;
+    const c = document.createElement("canvas");
+    c.width = Math.max(2, Math.round(R * 2 * scale));
+    c.height = Math.max(2, Math.round(R * 2 * scale));
+    const g = c.getContext("2d");
+    g.scale(scale, scale);
+    g.translate(R, R);
+
+    // Clip to the bezel annulus: outer bezel edge in, dial edge out.
+    g.beginPath();
+    g.arc(0, 0, R, 0, U.TAU);
+    g.arc(0, 0, FR, 0, U.TAU);
+    g.clip("evenodd");
+
+    for (let i = 0; i < 200; i++) {
+      const a = hash(i) * U.TAU;
+      const alpha = 0.015 + hash(i + 500) * 0.03;
+      g.strokeStyle = hash(i + 1000) < 0.5
+        ? `rgba(255, 255, 255, ${alpha})`
+        : `rgba(0, 0, 0, ${alpha})`;
+      g.lineWidth = Math.max(0.5, R * 0.0015);
+      g.beginPath();
+      g.moveTo(Math.cos(a) * FR, Math.sin(a) * FR);
+      g.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+      g.stroke();
+    }
+
+    bezelCache = { key, canvas: c };
+    return c;
+  }
+
   CLOX.register({
     id: "sweep",
     name: "Sweep · Wall Clock",
 
-    draw(ctx, W, H, d, settings) {
+    draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
+      if (dateRoll.lastDate === null) {
+        dateRoll.lastDate = t.date;
+      } else if (t.date !== dateRoll.lastDate) {
+        dateRoll.prevDate = dateRoll.lastDate;
+        dateRoll.lastDate = t.date;
+        dateRoll.t0 = now;
+      }
       const cx = W / 2, cy = H / 2;
       const R = Math.min(W, H) * 0.45;
 
@@ -76,6 +127,7 @@
 
       // Dial.
       const FR = R * 0.90;
+      ctx.drawImage(bezelTexture(R, FR), -R, -R, R * 2, R * 2);
       g = ctx.createRadialGradient(0, 0, 0, 0, 0, FR);
       g.addColorStop(0, "#faf7ef");
       g.addColorStop(0.85, "#f1ecdf");
@@ -89,6 +141,12 @@
       ctx.arc(0, 0, FR, 0, U.TAU);
       ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
       ctx.lineWidth = R * 0.012;
+      ctx.stroke();
+      // Subtler depth ring, slightly inset from the dial edge.
+      ctx.beginPath();
+      ctx.arc(0, 0, FR * 0.99, 0, U.TAU);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.10)";
+      ctx.lineWidth = R * 0.02;
       ctx.stroke();
 
       // Ticks.
@@ -133,36 +191,52 @@
       ctx.stroke();
       ctx.fillStyle = "#26251f";
       ctx.font = `600 ${R * 0.06}px "Segoe UI", sans-serif`;
-      ctx.fillText(String(t.date), dwX, R * 0.004);
+      const rollT = now - dateRoll.t0;
+      if (dateRoll.prevDate !== null && rollT < 900) {
+        // Old date rolls up out of the window, new date rolls in from below.
+        const p = U.easeInOutCubic(U.clamp(rollT / 900, 0, 1));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dwX - dwW / 2, -dwH / 2, dwW, dwH);
+        ctx.clip();
+        ctx.fillText(String(dateRoll.prevDate), dwX, R * 0.004 - p * dwH);
+        ctx.fillText(String(dateRoll.lastDate), dwX, R * 0.004 + dwH * (1 - p));
+        ctx.restore();
+      } else {
+        ctx.fillText(String(t.date), dwX, R * 0.004);
+      }
 
-      // Hands (each with its own drop shadow pass).
-      const shadow = (fn) => {
+      // Hands (each with its own drop shadow pass; float height off the
+      // dial differs per hand, so shadow blur/offset scale with it).
+      const shadow = (fn, blur, offsetY) => {
         ctx.save();
         ctx.shadowColor = "rgba(0, 0, 0, 0.30)";
-        ctx.shadowBlur = R * 0.02;
-        ctx.shadowOffsetY = R * 0.02;
+        ctx.shadowBlur = blur;
+        ctx.shadowOffsetY = offsetY;
         fn();
         ctx.restore();
       };
 
       const hourA = (t.fh / 12) * U.TAU;
       const minA = (t.fm / 60) * U.TAU;
-      const secA = (t.fs / 60) * U.TAU;
 
-      shadow(() => hand(ctx, hourA, FR * 0.52, R * 0.042, R * 0.022, "#1d1c19", R * 0.06));
-      shadow(() => hand(ctx, minA, FR * 0.76, R * 0.034, R * 0.014, "#1d1c19", R * 0.08));
+      shadow(() => hand(ctx, hourA, FR * 0.52, R * 0.042, R * 0.022, "#1d1c19", R * 0.06), R * 0.015, R * 0.012);
+      shadow(() => hand(ctx, minA, FR * 0.76, R * 0.034, R * 0.014, "#1d1c19", R * 0.08), R * 0.02, R * 0.02);
 
       // Red sweep second hand with counterweight.
-      shadow(() => {
-        ctx.save();
-        ctx.rotate(secA);
-        ctx.fillStyle = "#c8281e";
-        ctx.fillRect(-R * 0.006, -FR * 0.86, R * 0.012, FR * 0.86 + R * 0.14);
-        ctx.beginPath();
-        ctx.arc(0, R * 0.13, R * 0.028, 0, U.TAU);
-        ctx.fill();
-        ctx.restore();
-      });
+      if (settings.seconds) {
+        const secA = (t.fs / 60) * U.TAU;
+        shadow(() => {
+          ctx.save();
+          ctx.rotate(secA);
+          ctx.fillStyle = "#c8281e";
+          ctx.fillRect(-R * 0.006, -FR * 0.86, R * 0.012, FR * 0.86 + R * 0.14);
+          ctx.beginPath();
+          ctx.arc(0, R * 0.13, R * 0.028, 0, U.TAU);
+          ctx.fill();
+          ctx.restore();
+        }, R * 0.028, R * 0.032);
+      }
 
       // Center caps.
       ctx.beginPath();

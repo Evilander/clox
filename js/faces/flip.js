@@ -1,24 +1,31 @@
-/* FLIP — Solari split-flap clock. Two-digit cards for hours/minutes
- * (small seconds card optional) with a gravity-eased flap animation. */
+/* FLIP — Solari split-flap clock. Four single-digit cards (H1 H2 : M1 M2)
+ * so a rollover cascades left-to-right, plus a small seconds card, all with
+ * a gravity-eased flap animation. */
 "use strict";
 
 (() => {
-  // Per-card animation state: value currently shown, value flipping away, start time.
+  const hash = (i) => {
+    const x = Math.sin(i * 157.3 + 71.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
+  // Per-card animation state: value currently shown, value flipping away,
+  // start time (t0, may be delayed for cascade stagger), settle-bounce end.
   const cards = {};
 
-  function track(key, val, now, dur) {
+  function track(key, val, now, dur, delay = 0) {
     let c = cards[key];
-    if (!c) { c = cards[key] = { val, prev: val, t0: -1e9, dur }; }
-    if (val !== c.val) { c.prev = c.val; c.val = val; c.t0 = now; }
+    if (!c) { c = cards[key] = { val, prev: val, t0: -1e9, dur, endT: -1e9 }; }
+    if (val !== c.val) { c.prev = c.val; c.val = val; c.t0 = now + delay; }
     return c;
   }
 
   function cardBg(ctx, x, y, w, h, r) {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, "#232326");
-    g.addColorStop(0.5, "#1b1b1e");
-    g.addColorStop(0.501, "#242427");
-    g.addColorStop(1, "#161619");
+    g.addColorStop(0, "#2a2a2e");
+    g.addColorStop(0.5, "#202024");
+    g.addColorStop(0.501, "#2b2b2f");
+    g.addColorStop(1, "#1a1a1e");
     ctx.fillStyle = g;
     U.roundRect(ctx, x, y, w, h, r);
     ctx.fill();
@@ -46,7 +53,21 @@
     ctx.restore();
   }
 
-  function drawCard(ctx, x, y, w, h, c, now, label) {
+  /* Dark hinge-edge crease, drawn in screen space so it stays a crisp 2px
+   * regardless of how much the flap is squished. */
+  function hingeEdge(ctx, x, w, hinge, sy) {
+    if (Math.abs(sy) >= 0.97) return;
+    ctx.save();
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 2, hinge);
+    ctx.lineTo(x + w + 2, hinge);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawCard(ctx, x, y, w, h, c, now, label, cardIndex) {
     const r = h * 0.09;
     const font = `700 ${h * 0.72}px "Helvetica Neue", "Arial Narrow", Arial, sans-serif`;
     const p = U.clamp((now - c.t0) / c.dur, 0, 1);
@@ -61,8 +82,19 @@
     ctx.restore();
 
     if (p >= 1) {
+      if (c.endT < c.t0) c.endT = c.t0 + c.dur;
       half(ctx, x, y, w, h, r, c.val, font, "top", 0.10);
-      half(ctx, x, y, w, h, r, c.val, font, "bottom", 0);
+      // Settled bottom half dips briefly right after the flap lands.
+      const dt = now - c.endT;
+      if (dt >= 0 && dt < 180) {
+        const bounce = 2.5 * Math.exp(-dt / 70) * Math.sin(dt / 22);
+        ctx.save();
+        ctx.translate(0, bounce);
+        half(ctx, x, y, w, h, r, c.val, font, "bottom", 0);
+        ctx.restore();
+      } else {
+        half(ctx, x, y, w, h, r, c.val, font, "bottom", 0);
+      }
     } else {
       const e = U.easeInOutCubic(p);
       // Static layers: new value already waits on top, old value lingers below.
@@ -72,12 +104,14 @@
       if (e < 0.5) {
         // Old top flap folding down toward the viewer.
         const sy = Math.cos(e * Math.PI);
+        const sx = 1 - 0.07 * (1 - Math.abs(sy));
         ctx.save();
         ctx.translate(x + w / 2, hinge);
-        ctx.scale(1, Math.max(0.001, sy));
+        ctx.scale(sx, Math.max(0.001, sy));
         ctx.translate(-(x + w / 2), -hinge);
         half(ctx, x, y, w, h, r, c.prev, font, "top", 0.10 + (1 - sy) * 0.45);
         ctx.restore();
+        hingeEdge(ctx, x, w, hinge, sy);
       } else {
         // New bottom flap unfolding; casts a moving shadow on the old bottom.
         const sy = -Math.cos(e * Math.PI);
@@ -89,12 +123,14 @@
         ctx.fillRect(x - 2, hinge, w + 4, h / 2 + 2);
         ctx.restore();
 
+        const sx = 1 - 0.07 * (1 - Math.abs(sy));
         ctx.save();
         ctx.translate(x + w / 2, hinge);
-        ctx.scale(1, Math.max(0.001, sy));
+        ctx.scale(sx, Math.max(0.001, sy));
         ctx.translate(-(x + w / 2), -hinge);
         half(ctx, x, y, w, h, r, c.val, font, "bottom", (1 - sy) * 0.30);
         ctx.restore();
+        hingeEdge(ctx, x, w, hinge, sy);
       }
     }
 
@@ -108,6 +144,21 @@
       ctx.fill();
     }
 
+    // Worn corner: a tiny static chip, fixed per card position + digit value.
+    const corner = Math.floor(hash(cardIndex * 10 + (+c.val)) * 4);
+    const side = h * 0.035;
+    const ptx = corner % 2 === 0 ? x : x + w;
+    const pty = corner < 2 ? y : y + h;
+    const dx = corner % 2 === 0 ? 1 : -1;
+    const dy = corner < 2 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(ptx, pty);
+    ctx.lineTo(ptx + dx * side, pty);
+    ctx.lineTo(ptx, pty + dy * side);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.fill();
+
     // Tiny corner label (AM/PM on the hours card).
     if (label) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
@@ -115,6 +166,19 @@
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       ctx.fillText(label, x + w * 0.07, y + h * 0.06);
+    }
+  }
+
+  /* Stationary axle-pin dots marking the gap between the hour and minute
+   * groups — like the divider on a real Solari module. */
+  function colonDots(ctx, cx, y, h) {
+    const hinge = y + h / 2;
+    const rr = h * 0.032;
+    ctx.fillStyle = "#0c0c0e";
+    for (const dy of [-h * 0.15, h * 0.15]) {
+      ctx.beginPath();
+      ctx.arc(cx, hinge + dy, rr, 0, U.TAU);
+      ctx.fill();
     }
   }
 
@@ -132,38 +196,56 @@
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
       g = ctx.createRadialGradient(W / 2, H * 0.36, 0, W / 2, H * 0.36, Math.max(W, H) * 0.62);
-      g.addColorStop(0, "rgba(255, 240, 214, 0.07)");
+      g.addColorStop(0, "rgba(255, 240, 214, 0.11)");
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // Layout: two big cards, optional smaller seconds card.
+      // Layout: four single-digit cards (H1 H2 : M1 M2), optional seconds card.
       let ch = Math.min(H * 0.46, W * 0.30);
-      let cw = ch * 1.18;
+      let dcw = ch * 1.18 * 0.62;      // single-digit width, ~0.62 of the old two-digit card
       const sScale = 0.55;
-      let gap = ch * 0.12;
-      const total = () => cw * 2 + gap + (settings.seconds ? gap + cw * sScale : 0);
+      let gapSmall = dcw * 0.14;       // within a digit pair
+      let gapMid = dcw * 0.55;         // between hour pair and minute pair
+      let gapSec = ch * 0.12;          // before the seconds group
+      const total = () => dcw * 4 + gapSmall * 2 + gapMid +
+        (settings.seconds ? gapSec + dcw * sScale : 0);
       const maxW = W * 0.88;
       if (total() > maxW) {
         const k = maxW / total();
-        ch *= k; cw *= k; gap *= k;
+        ch *= k; dcw *= k; gapSmall *= k; gapMid *= k; gapSec *= k;
       }
 
       const x0 = (W - total()) / 2;
       const cy = H / 2 - ch / 2;
 
-      const hCard = track("h", settings.h24 ? U.pad2(t.H) : U.pad2(t.h), now, 550);
-      const mCard = track("m", U.pad2(t.m), now, 550);
+      const hStr = U.pad2(settings.h24 ? t.H : t.h);
+      const mStr = U.pad2(t.m);
 
-      drawCard(ctx, x0, cy, cw, ch, hCard, now,
-        settings.h24 ? null : (t.pm ? "PM" : "AM"));
-      drawCard(ctx, x0 + cw + gap, cy, cw, ch, mCard, now, null);
+      const xH1 = x0;
+      const xH2 = xH1 + dcw + gapSmall;
+      const xM1 = xH2 + dcw + gapMid;
+      const xM2 = xM1 + dcw + gapSmall;
+
+      // Cascade: each position left-to-right starts its flip 45ms later.
+      const h1 = track("h1", hStr[0], now, 550, 0);
+      const h2 = track("h2", hStr[1], now, 550, 45);
+      const m1 = track("m1", mStr[0], now, 550, 90);
+      const m2 = track("m2", mStr[1], now, 550, 135);
+
+      drawCard(ctx, xH1, cy, dcw, ch, h1, now, settings.h24 ? null : (t.pm ? "PM" : "AM"), 0);
+      drawCard(ctx, xH2, cy, dcw, ch, h2, now, null, 1);
+      colonDots(ctx, xH2 + dcw + gapMid / 2, cy, ch);
+      drawCard(ctx, xM1, cy, dcw, ch, m1, now, null, 2);
+      drawCard(ctx, xM2, cy, dcw, ch, m2, now, null, 3);
 
       if (settings.seconds) {
-        // Seconds flap falls fast, like the real mechanism.
+        // Seconds flap falls fast, like the real mechanism. Stays a single
+        // two-digit module — authentic for a seconds unit.
         const sCard = track("s", U.pad2(t.s), now, 240);
-        const sh = ch * sScale, sw = cw * sScale;
-        drawCard(ctx, x0 + cw * 2 + gap * 2, cy + ch - sh, sw, sh, sCard, now, null);
+        const sh = ch * sScale, sw = dcw * sScale;
+        const xSec = xM2 + dcw + gapSec;
+        drawCard(ctx, xSec, cy + ch - sh, sw, sh, sCard, now, null, 4);
       }
 
       // Date line beneath the cards.
