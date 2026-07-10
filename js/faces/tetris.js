@@ -1,8 +1,8 @@
-/* TETRIS — the stack IS the clock. Exactly one piece falls per second,
- * and over the minute the falling bars assemble HH:MM as a multicolor
- * block stack (complete by ~:51). When a digit changes, its region
- * line-clear flashes and bursts, then rebuilds piece by piece. LEVEL is
- * the hour, LINES is minutes-today, SCORE is seconds-today. */
+/* TETRIS — the stack IS the clock. Falling bars assemble HH:MM as a
+ * multicolor block stack in the first ~18 seconds of each minute (a
+ * piece lands every ~¾s during the build). When a digit changes, its
+ * region line-clear flashes and bursts, then rebuilds. LEVEL is the
+ * hour, LINES is minutes-today, SCORE is seconds-today. */
 "use strict";
 
 (() => {
@@ -116,8 +116,8 @@
 
   const targetFor = (runCount, fs) => {
     if (!runCount) return 0;
-    const interval = 50 / runCount;
-    return U.clamp(Math.floor((fs - 1) / interval) + 1, 0, runCount);
+    const interval = 17 / runCount;      // full digit rebuilt by ~:18
+    return U.clamp(Math.floor((fs - 0.8) / interval) + 1, 0, runCount);
   };
 
   function drawBlock(ctx, x, y, s, color, alpha = 1) {
@@ -137,7 +137,7 @@
 
   CLOX.register({
     id: "tetris",
-    name: "Tetris · One Piece Per Second",
+    name: "Tetris · Falling Digits",
 
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
@@ -224,7 +224,7 @@
         const gl = glyphs[fl.gi];
         if (!gl || fl.gen !== gl.gen || fl.runIdx >= gl.runs.length) { flights.splice(i, 1); continue; }
         const run = gl.runs[fl.runIdx];
-        const p = (now - fl.t0) / 620;
+        const p = (now - fl.t0) / 400;
         if (p >= 1) {
           gl.placed = Math.max(gl.placed, fl.runIdx + 1);
           flashes.push({ cells: run.cells, t0: now });
