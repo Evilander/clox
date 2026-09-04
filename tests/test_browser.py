@@ -176,7 +176,7 @@ class MeridianBrowserTests(unittest.TestCase):
                 self.page.set_viewport_size({"width": width, "height": height})
                 self.page.mouse.move(width / 2, height / 2)
                 self.page.wait_for_timeout(120)
-                for selector in ["#meridian-cities", "#meridian-copy", "#meridian-live", "#meridian-time"]:
+                for selector in ["#meridian-cities", "#meridian-plan", "#meridian-copy", "#meridian-live", "#meridian-time"]:
                     box = self.page.locator(selector).bounding_box()
                     self.assertGreaterEqual(box["x"], 0, selector)
                     self.assertGreaterEqual(box["y"], 0, selector)
@@ -234,7 +234,11 @@ class MeridianBrowserTests(unittest.TestCase):
             page.clock.fast_forward(125000)
             self.assertTrue(page.locator('#meridian-city-dialog').is_visible())
             page.keyboard.press('Escape')
-            page.locator('#meridian-cities').evaluate('el => el.blur()')
+            page.locator('#meridian-plan').click()
+            page.clock.fast_forward(125000)
+            self.assertTrue(page.locator('#meeting-dialog').is_visible())
+            page.keyboard.press('Escape')
+            page.locator('#meridian-plan').evaluate('el => el.blur()')
             page.clock.fast_forward(125000)
             page.wait_for_function('document.getElementById("meridian-controls").hidden')
             self.assertFalse(page.locator('#meridian-controls').is_visible())
@@ -272,6 +276,134 @@ class MeridianBrowserTests(unittest.TestCase):
         self.page.keyboard.press('Escape')
         self.page.keyboard.press('ArrowRight')
         self.assertFalse(self.page.locator('#meridian-controls').is_visible())
+
+    def plan(self, pair=True):
+        self.assertEqual(self.page.locator('#meridian-plan').count(), 1)
+        self.page.locator('#meridian-plan').click()
+        self.page.locator('#meeting-date').fill('2026-09-07')
+        if pair:
+            self.page.locator('#meeting-join-tokyo').uncheck()
+            self.page.locator('#meeting-join-sydney').uncheck()
+        self.page.get_by_role('button', name='Find times', exact=False).click()
+
+    def test_planner_finds_overlap_and_downloads_the_selected_calendar_event(self):
+        self.plan()
+        self.assertEqual(self.page.locator('#meeting-result-title').text_content(), 'A shared window.')
+        self.assertIn('7 possible starts', self.page.locator('#meeting-result-status').text_content())
+        self.assertIn('09:00', self.page.locator('.meeting-slot[aria-pressed=true]').text_content())
+        self.page.locator('#meeting-event-title').fill('Design review, round 2')
+        with self.page.expect_download() as download:
+            self.page.locator('#meeting-calendar').click()
+        self.assertTrue(download.value.suggested_filename.endswith('.ics'))
+        data = Path(download.value.path()).read_bytes()
+        self.assertIn(b'DTSTART:20260907T140000Z\r\n', data)
+        self.assertIn(b'DTEND:20260907T143000Z\r\n', data)
+        self.assertIn(b'SUMMARY:Design review\\, round 2\r\n', data)
+        self.assertNotIn(b'ATTENDEE:', data)
+
+    def test_planner_makes_no_overlap_explicit_and_copies_every_local_date(self):
+        self.plan(pair=False)
+        self.assertEqual(self.page.locator('#meeting-result-title').text_content(), 'No shared window.')
+        self.assertEqual(self.page.locator('#meeting-local-times tr').count(), 4)
+        self.assertGreater(self.page.locator('#meeting-local-times .is-compromise').count(), 0)
+        self.page.evaluate("Object.defineProperty(navigator, 'clipboard', {value: {writeText: () => Promise.reject(new Error('denied'))}, configurable: true})")
+        self.page.locator('#meeting-copy').click()
+        field = self.page.locator('#meeting-copy-text')
+        field.wait_for(state='visible')
+        text = field.input_value()
+        for city in ['Chicago', 'London', 'Tokyo', 'Sydney']:
+            self.assertIn(f'{city}:', text)
+        self.assertIn('UTC: 2026-09-07', text)
+        self.assertIn('outside hours', text)
+        self.assertTrue(field.evaluate('el => el.selectionEnd === el.value.length'))
+
+    def test_planner_can_preview_a_chosen_start_on_the_atlas(self):
+        self.plan()
+        self.page.locator('.meeting-slot').nth(1).click()
+        self.page.locator('#meeting-atlas').click()
+        self.assertFalse(self.page.locator('#meeting-dialog').is_visible())
+        self.assertFalse(self.state()['live'])
+        self.assertEqual(self.state()['instant'], '2026-09-07T14:30:00.000Z')
+        self.assertTrue(self.page.locator('#meridian-plan').evaluate('el => el === document.activeElement'))
+        self.page.locator('#meridian-live').click()
+        self.assertTrue(self.state()['live'])
+
+    def test_planner_can_choose_a_precise_start_outside_the_suggestion_cards(self):
+        self.plan()
+        self.assertEqual(self.page.locator('#meeting-all-starts option').count(), 96)
+        instant = self.page.evaluate("Date.parse('2026-09-07T14:15:00Z')")
+        self.page.locator('#meeting-all-starts').select_option(str(instant))
+        self.assertEqual(self.page.locator('.meeting-slot[aria-pressed=true]').count(), 0)
+        self.assertIn('09:15', self.page.locator('#meeting-local-times').text_content())
+        with self.page.expect_download() as download:
+            self.page.locator('#meeting-calendar').click()
+        self.assertIn(b'DTSTART:20260907T141500Z\r\n', Path(download.value.path()).read_bytes())
+
+    def test_planner_invalidates_stale_results_and_saves_availability(self):
+        self.plan()
+        self.page.locator('#meeting-from-chicago').fill('10:00')
+        self.assertTrue(self.page.locator('#meeting-calendar').is_disabled())
+        self.assertFalse(self.page.locator('#meeting-selection').is_visible())
+        self.page.get_by_role('button', name='Find times', exact=False).click()
+        self.assertIn('10:00', self.page.locator('.meeting-slot[aria-pressed=true]').text_content())
+        self.page.keyboard.press('Escape')
+        self.open()
+        self.page.locator('#meridian-plan').click()
+        self.assertEqual(self.page.locator('#meeting-from-chicago').input_value(), '10:00')
+        self.assertFalse(self.page.locator('#meeting-join-tokyo').is_checked())
+        self.assertTrue(self.page.locator('#meeting-from-tokyo').is_disabled())
+
+    def test_planner_rejects_empty_participants_and_equal_hours(self):
+        self.plan()
+        self.page.locator('#meeting-join-london').uncheck()
+        self.page.get_by_role('button', name='Find times', exact=False).click()
+        self.assertIn('at least two cities', self.page.locator('#meeting-result-status').text_content())
+        self.assertTrue(self.page.locator('#meeting-calendar').is_disabled())
+        self.page.locator('#meeting-join-london').check()
+        self.page.locator('#meeting-to-chicago').fill('09:00')
+        self.page.get_by_role('button', name='Find times', exact=False).click()
+        self.assertIn('different start and end times', self.page.locator('#meeting-result-status').text_content())
+        self.assertTrue(self.page.locator('#meeting-calendar').is_disabled())
+
+    def test_planner_survives_malformed_and_blocked_storage(self):
+        for value in ['null', '{bad', '{"hours":true,"duration":-1}', '{"hours":{"chicago":{"from":"bad","to":9}},"includeWeekends":"true"}']:
+            self.page.evaluate("value => localStorage.setItem('clox.meeting.v1', value)", value)
+            self.open()
+            self.page.locator('#meridian-plan').click()
+            self.assertEqual(self.page.locator('#meeting-from-chicago').input_value(), '09:00')
+            self.assertEqual(self.page.locator('#meeting-duration').input_value(), '30')
+            self.assertFalse(self.page.locator('#meeting-weekends').is_checked())
+            self.page.keyboard.press('Escape')
+        self.page.add_init_script("Object.defineProperty(window, 'localStorage', {get() {throw new DOMException('blocked', 'SecurityError')}})")
+        self.open()
+        self.plan()
+        self.assertEqual(self.page.locator('#meeting-result-title').text_content(), 'A shared window.')
+
+    def test_planner_phone_layout_has_no_horizontal_overflow_and_keeps_native_keys(self):
+        for width, height in [(320, 568), (390, 844), (896, 414)]:
+            self.page.set_viewport_size({'width': width, 'height': height})
+            self.plan()
+            self.assertTrue(self.page.locator('#meeting-dialog').evaluate('el => el.scrollWidth <= el.clientWidth + 1'))
+            self.page.locator('#meeting-event-title').fill('Planning G, H, M & S')
+            self.page.keyboard.press('ArrowLeft')
+            self.assertTrue(self.page.locator('#meeting-dialog').is_visible())
+            self.page.locator('#meeting-calendar').scroll_into_view_if_needed()
+            box = self.page.locator('#meeting-calendar').bounding_box()
+            self.assertGreaterEqual(box['x'], 0)
+            self.assertLessEqual(box['x'] + box['width'], width)
+            self.page.keyboard.press('Escape')
+            self.assertTrue(self.page.locator('#meridian-plan').evaluate('el => el === document.activeElement'))
+            self.assertTrue(self.page.locator('#meridian-controls').is_visible())
+
+    def test_planner_does_not_export_a_start_that_passed_while_open(self):
+        self.plan()
+        self.page.clock.set_fixed_time('2026-09-07T14:01:00Z')
+        downloads = []
+        self.page.on('download', lambda download: downloads.append(download.suggested_filename))
+        self.page.locator('#meeting-calendar').click()
+        self.assertEqual(downloads, [])
+        self.assertIn('start has passed', self.page.locator('#meeting-result-status').text_content())
+        self.assertIn('09:15', self.page.locator('.meeting-slot[aria-pressed=true]').text_content())
 
 
 if __name__ == "__main__":

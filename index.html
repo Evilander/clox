@@ -8,6 +8,7 @@
 <!-- Classic scripts (not ES modules) so this works over file:// with a double-click. -->
 <script defer src="js/util.js"></script>
 <script defer src="js/world-time.js"></script>
+<script defer src="js/meeting-time.js"></script>
 <script defer src="js/world-land.js"></script>
 <script defer src="js/engine.js"></script>
 <script defer src="js/faces/redline.js"></script>
@@ -33,6 +34,7 @@
 <script defer src="js/faces/tetris.js"></script>
 <script defer src="js/faces/scope.js"></script>
 <script defer src="js/meridian-controls.js"></script>
+<script defer src="js/meeting-planner.js"></script>
 <script defer src="js/faces/meridian.js"></script>
 </head>
 <body>
@@ -62,6 +64,7 @@
   <div class="meridian-actions">
     <button type="button" id="meridian-faces">Faces</button>
     <button type="button" id="meridian-cities">Cities</button>
+    <button type="button" id="meridian-plan">Find a time</button>
     <button type="button" id="meridian-copy">Copy times</button>
     <button type="button" id="meridian-live" title="Return to the current time" aria-pressed="true"><span aria-hidden="true">●</span> Live</button>
   </div>
@@ -86,6 +89,47 @@
   <p>Copy the selected text with Ctrl+C or your device’s copy command.</p>
   <textarea id="meridian-copy-text" readonly rows="7" aria-label="Times to copy"></textarea>
   <form method="dialog" class="meridian-dialog-actions"><button class="primary">Done</button></form>
+</dialog>
+<dialog id="meeting-dialog" class="meridian-dialog meeting-dialog" aria-labelledby="meeting-title">
+  <header class="meeting-header">
+    <div><p class="meridian-eyebrow">MERIDIAN / MEETING PLANNER</p><h1 id="meeting-title">Find a time together.</h1></div>
+    <button type="button" id="meeting-close" aria-label="Close meeting planner">Close</button>
+  </header>
+  <div class="meeting-layout">
+    <form id="meeting-form" class="meeting-setup">
+      <p class="meeting-intro">A call, a game, a catch-up. Give everyone a say in the hour.</p>
+      <div class="meeting-when">
+        <label><span id="meeting-date-label">Day</span><input id="meeting-date" type="date" required></label>
+        <label>Length<select id="meeting-duration"><option value="15">15 minutes</option><option value="30" selected>30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1½ hours</option><option value="120">2 hours</option><option value="180">3 hours</option></select></label>
+      </div>
+      <fieldset class="meeting-people"><legend>Who’s joining?</legend><div id="meeting-people"></div></fieldset>
+      <p class="meeting-help">Hours are local to each city. An earlier end means overnight.</p>
+      <label class="meeting-weekends"><input id="meeting-weekends" type="checkbox"> Include weekends</label>
+      <p class="meeting-help">Otherwise, hours start Monday–Friday in each city. Availability stays on this device.</p>
+      <button type="submit" class="primary meeting-search">Find times <span aria-hidden="true">→</span></button>
+    </form>
+    <section class="meeting-results" aria-label="Suggested meeting times">
+      <p class="meridian-eyebrow">THE COMMON GROUND</p>
+      <h2 id="meeting-result-title" tabindex="-1">Choose your hours.</h2>
+      <p id="meeting-result-status" role="status">Find a time to compare everyone’s day.</p>
+      <div id="meeting-slots" class="meeting-slots" role="group" aria-label="Suggested start times"></div>
+      <label id="meeting-other" class="meeting-event-title" hidden><span id="meeting-other-label">All starts</span><select id="meeting-all-starts"></select></label>
+      <div id="meeting-selection" hidden>
+        <p id="meeting-selection-label" class="meeting-selection-label"></p>
+        <table class="meeting-local-times"><caption class="sr-only">Selected meeting in each city</caption><thead><tr><th scope="col">City</th><th scope="col">Local time and availability</th></tr></thead><tbody id="meeting-local-times"></tbody></table>
+        <label class="meeting-event-title">Event title<input id="meeting-event-title" type="text" maxlength="160" value="Team call"></label>
+        <div class="meeting-export">
+          <button type="button" id="meeting-calendar" class="primary">Save calendar event</button>
+          <button type="button" id="meeting-copy">Copy details</button>
+          <button type="button" id="meeting-atlas">View on atlas</button>
+        </div>
+        <p class="meeting-help">Open the downloaded .ics file in your calendar to add this event. Copy the details to send to the group.</p>
+        <p id="meeting-feedback" role="status"></p>
+        <div id="meeting-copy-fallback" hidden><label for="meeting-copy-text">Copy the selected text with Ctrl+C or your device’s copy command.</label><textarea id="meeting-copy-text" readonly rows="7"></textarea></div>
+      </div>
+      <p class="meeting-footnote">Starts are 15 minutes apart. Every minute of the meeting is checked. When hours don’t overlap, suggestions minimize the most minutes outside any one person’s hours, then the total across the group.</p>
+    </section>
+  </div>
 </dialog>
 </body>
 </html>

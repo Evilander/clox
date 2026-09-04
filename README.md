@@ -1,7 +1,7 @@
 # clox
 
-Fullscreen analog + vintage-digital clock screensavers, rendered on a single
-`<canvas>` at 60 fps. Zero dependencies, zero build step — double-click
+Fullscreen clock screensavers and an offline meeting planner for people in
+different time zones. Zero dependencies, zero build step — double-click
 `index.html` or run `clox.bat` for instant kiosk-mode fullscreen.
 
 Resolution-independent: everything is drawn relative to the window size with
@@ -10,8 +10,42 @@ render crisp.
 
 ## Meridian · World Time
 
-Press **M** for an atlas clock with four cities, a moving day/night boundary,
-and aligned timelines. Everything runs locally, including the map.
+Find a time for a call, a game, or a catch-up across time zones. Press **M**,
+then **Find a time**. Meridian compares local availability and turns a chosen
+slot into copyable details or a calendar event.
+
+![Meridian meeting planner](screenshots/meeting-planner.jpg)
+
+1. Use **Cities** to set your four places, then **Find a time** to choose who is
+   joining this particular meeting. Include two, three, or all four cities.
+2. Choose a date, a length from 15 minutes to three hours, and each city's local
+   availability. The date is in your first city's time zone. Hours normally
+   start Monday–Friday; **Include weekends** also permits Saturday and Sunday.
+   An end earlier than the start means overnight, so Friday 22:00–06:00 includes
+   early Saturday morning.
+3. Click **Find times** and select a suggestion, or use **All starts** to pick
+   any other start on that date. The whole meeting must fit
+   everyone's hours to count as a shared window. When no window exists,
+   alternatives show exactly who would be outside their hours and for how long.
+4. **Save calendar event** downloads an `.ics` file to open in your calendar.
+   **Copy details** provides every city's date, time, and UTC offset for a message
+   to the group. **View on atlas** puts the selected instant onto the map.
+
+The planner remembers availability on this device. It checks the hours you set;
+it does not read existing calendar events. Starts are checked every 15 minutes,
+with daylight-saving changes applied to every minute of the meeting. Suggestions
+minimize the largest number of minutes outside one person's hours, then the
+group's total, then distance from the chosen availability. A spread of up to six
+options is shown; past starts are excluded.
+
+Calendar files contain a tentative event with UTC start and end times and a
+description of the local times. Import the file into your own calendar and send
+the details yourself. No accounts, server, or calendar permissions are needed.
+
+### Keep the world in view
+
+The atlas clock shows four cities, a moving day/night boundary, and aligned
+timelines. Everything runs locally, including the map.
 
 ![Meridian world clock](screenshots/meridian.jpg)
 
@@ -113,8 +147,10 @@ js/util.js          registry, easings, time parts, seven-segment renderer
 js/engine.js        rAF loop, DPR resize, input, settings, wake lock,
                     face lifecycle, gallery, crossfade, dim, chime
 js/world-time.js    city catalog, IANA local time, solar geometry, timelines
+js/meeting-time.js  full-duration availability search, local ranges, calendar export
 js/world-land.js    bundled Natural Earth land geometry
 js/meridian-controls.js  city dialog, time exploration, copy, persistence
+js/meeting-planner.js    meeting form, suggestions, calendar download, copy
 js/faces/*.js       one file per face; each calls CLOX.register({id, name, draw})
 ```
 
@@ -135,14 +171,16 @@ imports over `file://`, and a screensaver must work with a double-click.
 
 ## Verification
 
-The time and solar tests use Node's built-in test runner (Node 22+):
+The time, solar, scheduling, and calendar-format tests use Node's built-in test
+runner (Node 22+):
 
 ```sh
-node --test tests/world-time.test.mjs
+node --test tests/world-time.test.mjs tests/meeting-time.test.mjs
 ```
 
-Browser tests open the actual `file://` app, exercise the controls, verify offline
-operation, and draw every face. They use Python 3.10+ and Playwright:
+Browser tests open the actual `file://` app, exercise the controls and planner,
+verify calendar downloads and offline operation, and draw every face. They use
+Python 3.10+ and Playwright:
 
 ```sh
 python -m pip install playwright

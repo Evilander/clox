@@ -132,9 +132,11 @@ CLOX.meridian = (() => {
     if (key === lastLayout) return;
     lastLayout = key;
     const actions = controls.querySelector(".meridian-actions");
+    actions.classList.toggle("is-portrait", portrait);
     const scrub = controls.querySelector(".meridian-scrub");
     const refWidth = portrait ? 440 : 1440;
-    actions.style.left = `${x + (portrait ? 24 : compact ? 580 : 1060) * s}px`;
+    actions.style.left = `${portrait ? 12 : x + (compact ? 580 : 910) * s}px`;
+    actions.style.width = `${portrait ? 2 * x + 440 * s - 24 : (compact ? 820 : 466) * s}px`;
     actions.style.top = `${y + (portrait ? 100 : compact ? 36 : 45) * s}px`;
     actions.style.fontSize = `${Math.max(11, 13 * s)}px`;
     scrub.style.left = `${x + (portrait ? 28 : 190) * s}px`;
@@ -146,12 +148,15 @@ CLOX.meridian = (() => {
 
   return {
     controls, snapshot, layout,
-    busy() { return selected !== null || cityDialog.open || copyDialog.open || controls.contains(document.activeElement); },
+    get h24() { return currentSettings.h24; },
+    explore(instant) { selected = instant; start = Math.floor(instant / T.HOUR) * T.HOUR - 6 * T.HOUR; update(); },
+    busy() { return selected !== null || cityDialog.open || copyDialog.open || document.getElementById("meeting-dialog").open || controls.contains(document.activeElement); },
     settings(value) { currentSettings = value; },
     enter() { active = true; timer = setInterval(update, 1000); update(); },
     leave() {
       active = false; clearInterval(timer); selected = null;
       cityDialog.close(); copyDialog.close();
+      document.getElementById("meeting-dialog").close();
     },
     update
   };
