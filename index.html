@@ -7,6 +7,8 @@
 <link rel="stylesheet" href="css/style.css">
 <!-- Classic scripts (not ES modules) so this works over file:// with a double-click. -->
 <script defer src="js/util.js"></script>
+<script defer src="js/world-time.js"></script>
+<script defer src="js/world-land.js"></script>
 <script defer src="js/engine.js"></script>
 <script defer src="js/faces/redline.js"></script>
 <script defer src="js/faces/flip.js"></script>
@@ -30,13 +32,21 @@
 <script defer src="js/faces/hourglass.js"></script>
 <script defer src="js/faces/tetris.js"></script>
 <script defer src="js/faces/scope.js"></script>
+<script defer src="js/meridian-controls.js"></script>
+<script defer src="js/faces/meridian.js"></script>
 </head>
 <body>
-<canvas id="clock"></canvas>
-<div id="toast" class="hidden"></div>
+<canvas id="clock" role="img" tabindex="-1" aria-label="Clox clock. Press M for world time, G for the face gallery, or question mark for controls."></canvas>
+<button type="button" id="gallery-button" aria-label="Choose clock face">Faces <span aria-hidden="true">▦</span></button>
+<dialog id="face-gallery" aria-label="Choose a clock face">
+  <div id="gallery-buttons"></div>
+  <button type="button" id="gallery-close">Back to clock</button>
+</dialog>
+<div id="toast" class="hidden" role="status"></div>
 <div id="hint" class="hidden">
   <span class="k">&larr;/&rarr;</span> face &nbsp;·&nbsp;
   <span class="k">G</span> gallery &nbsp;·&nbsp;
+  <span class="k">M</span> world time &nbsp;·&nbsp;
   <span class="k">1-9</span> jump &nbsp;·&nbsp;
   <span class="k">F</span> fullscreen &nbsp;·&nbsp;
   <span class="k">S</span> seconds &nbsp;·&nbsp;
@@ -48,5 +58,34 @@
   <span class="k">P</span> snap &nbsp;·&nbsp;
   <span class="k">?</span> help
 </div>
+<section id="meridian-controls" aria-label="World clock controls" hidden>
+  <div class="meridian-actions">
+    <button type="button" id="meridian-faces">Faces</button>
+    <button type="button" id="meridian-cities">Cities</button>
+    <button type="button" id="meridian-copy">Copy times</button>
+    <button type="button" id="meridian-live" title="Return to the current time" aria-pressed="true"><span aria-hidden="true">●</span> Live</button>
+  </div>
+  <div class="meridian-scrub">
+    <div class="meridian-scrub-label"><label for="meridian-time">Explore time</label><output id="meridian-time-label" for="meridian-time">Live</output></div>
+    <input id="meridian-time" type="range" min="0" max="1440" step="1" value="360" aria-describedby="meridian-range-help">
+    <p id="meridian-range-help" class="sr-only">Move through 24 elapsed hours. All four cities and the daylight map follow the same instant. Press Escape or Live to return to the current time.</p>
+  </div>
+  <p id="meridian-summary" class="sr-only" aria-live="off"></p>
+</section>
+<dialog id="meridian-city-dialog" class="meridian-dialog" aria-labelledby="meridian-city-title">
+  <form id="meridian-city-form">
+    <p class="meridian-eyebrow">MERIDIAN / PLACES</p>
+    <h1 id="meridian-city-title">Your four corners<br>of the world.</h1>
+    <p class="meridian-dialog-intro">Choose the places you want to keep in view. The first city is your reference for day changes.</p>
+    <div id="meridian-city-fields"></div>
+    <div class="meridian-dialog-actions"><button type="button" id="meridian-cancel">Cancel</button><button type="submit" class="primary">Save cities</button></div>
+  </form>
+</dialog>
+<dialog id="meridian-copy-dialog" class="meridian-dialog" aria-labelledby="meridian-copy-title">
+  <h1 id="meridian-copy-title">Copy these times</h1>
+  <p>Copy the selected text with Ctrl+C or your device’s copy command.</p>
+  <textarea id="meridian-copy-text" readonly rows="7" aria-label="Times to copy"></textarea>
+  <form method="dialog" class="meridian-dialog-actions"><button class="primary">Done</button></form>
+</dialog>
 </body>
 </html>

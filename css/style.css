@@ -43,6 +43,11 @@ body.nocursor, body.nocursor * {
 #hint {
   bottom: 5%;
   font-size: 13px;
+  box-sizing: border-box;
+  max-width: calc(100vw - 28px);
+  white-space: normal;
+  text-align: center;
+  line-height: 1.8;
 }
 
 #hint .k {
@@ -52,4 +57,190 @@ body.nocursor, body.nocursor * {
 
 .hidden {
   opacity: 0;
+}
+
+[hidden] { display: none !important; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#meridian-controls {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  color: #e2d8be;
+  font: 13px "Segoe UI", system-ui, sans-serif;
+}
+
+.meridian-actions, .meridian-scrub {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.meridian-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#meridian-controls button, .meridian-dialog button {
+  font: inherit;
+  color: #c9c4b6;
+  background: #17252b;
+  border: 1px solid #3c4a4b;
+  border-radius: 5px;
+  padding: 9px 13px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+#meridian-controls button:hover, .meridian-dialog button:hover {
+  border-color: #c5b486;
+  color: #fff1d0;
+}
+
+#meridian-live[aria-pressed="true"] { color: #b5c7b0; }
+#meridian-live[aria-pressed="true"] span { font-size: 10px; margin-right: 4px; }
+#meridian-live[aria-pressed="false"] { border-color: #c8a976; color: #edcb91; }
+
+.meridian-scrub-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #a9b0ab;
+  font-size: 12px;
+}
+
+#meridian-time-label { color: #d6c7a8; text-align: right; }
+
+#meridian-time {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+
+#meridian-time::-webkit-slider-runnable-track { height: 2px; background: #5c655e; }
+#meridian-time::-moz-range-track { height: 2px; background: #5c655e; }
+#meridian-time::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -5.5px;
+  border: 2px solid #132128;
+  border-radius: 50%;
+  background: #e4ce99;
+  box-shadow: 0 0 0 1px #e4ce99;
+}
+#meridian-time::-moz-range-thumb {
+  width: 10px; height: 10px;
+  border: 2px solid #132128;
+  border-radius: 50%;
+  background: #e4ce99;
+}
+
+#meridian-controls :focus-visible, .meridian-dialog :focus-visible {
+  outline: 2px solid #e4ce99;
+  outline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.nocursor #meridian-controls:not(:focus-within):not(.is-exploring) .meridian-actions,
+  body.nocursor #meridian-controls:not(:focus-within):not(.is-exploring) .meridian-scrub {
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.nocursor #gallery-button:not(:focus-visible) { opacity: 0; pointer-events: none; }
+}
+
+.meridian-dialog {
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 32px;
+  border: 1px solid #59615b;
+  border-radius: 10px;
+  background: #14232a;
+  color: #e5d8bc;
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+  box-shadow: 0 24px 100px #0008;
+}
+.meridian-dialog::backdrop { background: #050e15c9; backdrop-filter: blur(6px); }
+.meridian-dialog h1 { margin: 8px 0 16px; font: 36px/1.12 Georgia, serif; font-weight: 400; }
+.meridian-eyebrow { font-size: 10px; letter-spacing: 0.18em; color: #bbaa83; }
+.meridian-dialog-intro { color: #b1b6b0; margin-bottom: 24px; }
+.meridian-city-field { display: grid; grid-template-columns: 35px 1fr; gap: 8px; align-items: center; margin: 12px 0; }
+.meridian-city-field label { font: 13px Consolas, monospace; color: #bdaa83; }
+.meridian-dialog select, .meridian-dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 10px;
+  color: #e2d8be;
+  background: #0e1c23;
+  border: 1px solid #465454;
+  border-radius: 5px;
+  font: inherit;
+}
+.meridian-dialog textarea { font: 12px/1.6 Consolas, monospace; resize: vertical; }
+.meridian-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
+.meridian-dialog button.primary { color: #18242a; background: #dec897; border-color: #dec897; }
+body:has(dialog[open]), body:has(dialog[open]) * { cursor: auto !important; }
+body:has(dialog[open]) button { cursor: pointer !important; }
+
+#gallery-button, #gallery-close {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 18px;
+  padding: 10px 18px;
+  min-height: 42px;
+  color: #e0d6bf;
+  background: #10181ce8;
+  border: 1px solid #677471;
+  border-radius: 6px;
+  font: 13px "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+#face-gallery {
+  box-sizing: border-box;
+  width: 100vw; height: 100dvh;
+  max-width: none; max-height: none;
+  inset: 0; margin: 0; padding: 0; border: 0;
+  background: transparent;
+}
+#face-gallery::backdrop { background: transparent; }
+#gallery-buttons button {
+  position: absolute;
+  background: transparent;
+  border: 0; padding: 0;
+  cursor: pointer;
+}
+#gallery-buttons button:focus-visible, #gallery-button:focus-visible, #gallery-close:focus-visible {
+  outline: 2px solid #ffd27a;
+  outline-offset: 3px;
+}
+#gallery-close { top: auto; bottom: 12px; }
+
+@media (max-height: 640px) {
+  .meridian-dialog { padding: 20px 24px; }
+  .meridian-dialog h1 { font-size: 27px; }
+  .meridian-dialog-intro { margin-bottom: 14px; }
+  .meridian-city-field { margin: 8px 0; }
+  .meridian-dialog-actions { margin-top: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toast, #hint { transition: none; }
 }

@@ -8,6 +8,39 @@ Resolution-independent: everything is drawn relative to the window size with
 `devicePixelRatio` scaling (capped at 2×), so 1080p, 1440p (2K), and 4K all
 render crisp.
 
+## Meridian · World Time
+
+Press **M** for an atlas clock with four cities, a moving day/night boundary,
+and aligned timelines. Everything runs locally, including the map.
+
+![Meridian world clock](screenshots/meridian.jpg)
+
+- **Cities** selects four places from 38 locations. Choices stay on this device;
+  the first city is the reference for the `+1 DAY` / `−1 DAY` labels.
+- **Explore time** moves every clock and the map to the same instant. The range
+  spans 24 elapsed hours, starting six hours before the current UTC hour. Local
+  time follows daylight-saving rules, including skipped and repeated hours.
+- **Live** or `Escape` while using the slider returns to the current time.
+  Exploring pauses auto-cycle; the tab title and hourly chime keep real time.
+- **Copy times** copies each city's date, time, and UTC offset. If clipboard
+  access is blocked, a dialog offers selectable text.
+- The timelines always use a 24-hour scale. Light bands depict daylight;
+  outlines mark 09:00–17:00 local time every day. `H` changes the large clocks
+  between 12- and 24-hour display; `S` hides their seconds.
+
+Open a particular board with a URL such as
+`index.html?face=meridian&cities=chicago,london,kathmandu,sydney&h24=1`.
+City IDs appear in `js/world-time.js`. URL choices apply to that visit;
+**Save cities** makes them persistent. Invalid or duplicate IDs fall back to
+a complete board.
+
+Daylight shading uses [NOAA's approximate solar-position equations](https://gml.noaa.gov/grad/solcalc/solareqns.PDF),
+with twilight blended at the boundary. The bundled land geometry comes from
+[Natural Earth](https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/)
+and is [public domain](https://www.naturalearthdata.com/about/terms-of-use/).
+Times use the browser's IANA time-zone data. There are no location permissions,
+network requests, or runtime dependencies.
+
 ## Faces
 
 | | |
@@ -28,7 +61,10 @@ render crisp.
 
 - **Kiosk / screensaver mode:** double-click `clox.bat` (Chrome, falls back to Edge). `Alt+F4` or `Ctrl+W` to exit.
 - **Normal:** open `index.html` in any Chromium browser, press `F` or click for fullscreen.
-- **Pick a face from anywhere:** press `G` for the live gallery — every face rendering as a tile.
+- **Pick a face from anywhere:** click **Faces** or press `G` for the live gallery.
+  Tap a tile, or use arrows / Home / End and Enter. Tab also reaches each face;
+  Escape or **Back to clock** closes the gallery. Controls stay visible on touch
+  screens and fade while idle with a mouse.
 
 While fullscreen, clox requests a screen wake lock so the display stays on.
 
@@ -39,6 +75,7 @@ While fullscreen, clox requests a screen wake lock so the display stays on.
 | `←` / `→` / `Space` | Switch face (with crossfade) |
 | `1`-`9`, `0` | Jump to the first ten faces |
 | `G` | Live gallery of all faces (arrows navigate, `↵` select, `Esc` close) |
+| `M` | Meridian world clock |
 | `F` / click | Toggle fullscreen |
 | `S` | Toggle seconds |
 | `H` | Toggle 12/24-hour |
@@ -75,6 +112,9 @@ css/style.css       canvas fill, toast/hint overlays, cursor hiding
 js/util.js          registry, easings, time parts, seven-segment renderer
 js/engine.js        rAF loop, DPR resize, input, settings, wake lock,
                     face lifecycle, gallery, crossfade, dim, chime
+js/world-time.js    city catalog, IANA local time, solar geometry, timelines
+js/world-land.js    bundled Natural Earth land geometry
+js/meridian-controls.js  city dialog, time exploration, copy, persistence
 js/faces/*.js       one file per face; each calls CLOX.register({id, name, draw})
 ```
 
@@ -85,6 +125,34 @@ add a `<script defer>` tag to `index.html`. `W`/`H` are CSS pixels
 optional `enter()` / `leave()` hooks — the engine calls them on face
 switches, which is where a face should attach and detach any listeners.
 The gallery renders faces at tile size with `settings.preview = true`.
+Faces with native controls may expose their container as `controls`; the engine
+hides it during the gallery and on other faces. An optional `busy()` hook pauses
+auto-cycle during interaction. Preview rendering must leave those controls and
+the user's active session state untouched.
 
 Classic scripts instead of ES modules is deliberate: Chrome blocks module
 imports over `file://`, and a screensaver must work with a double-click.
+
+## Verification
+
+The time and solar tests use Node's built-in test runner (Node 22+):
+
+```sh
+node --test tests/world-time.test.mjs
+```
+
+Browser tests open the actual `file://` app, exercise the controls, verify offline
+operation, and draw every face. They use Python 3.10+ and Playwright:
+
+```sh
+python -m pip install playwright
+python -m playwright install chromium
+python -m unittest discover -s tests -v
+```
+
+To test with an installed Chrome on Windows, set `$env:CLOX_BROWSER='chrome'`
+in PowerShell before running the tests. `msedge` selects Edge.
+
+The map can be rebuilt from its pinned source with
+`python scripts/build-land.py` (Python standard library; network required only
+for this rebuild).

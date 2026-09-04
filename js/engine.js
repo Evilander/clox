@@ -7,6 +7,10 @@
   const ctx = canvas.getContext("2d");
   const toastEl = document.getElementById("toast");
   const hintEl = document.getElementById("hint");
+  const galleryButton = document.getElementById("gallery-button");
+  const galleryDialog = document.getElementById("face-gallery");
+  const galleryChoices = document.getElementById("gallery-buttons");
+  const galleryClose = document.getElementById("gallery-close");
 
   const SETTINGS_KEY = "clox.settings.v1";
   const CYCLE_MS = 2 * 60 * 1000;
@@ -45,6 +49,7 @@
 
   // Gallery state.
   let galleryOn = false, galSel = 0, galTick = 0;
+  let galleryReturnFocus = null;
   let tiles = { key: "", list: [], cols: 1, tw: 0, th: 0, pad: 0, top: 0, left: 0, labelH: 0 };
 
   // Chime state.
@@ -105,11 +110,26 @@
     if (persist) saveSettings();         // boot skips this: URL params stay one-shot
     lastCycle = performance.now();
     const face = CLOX.faces[faceIndex];
+    if (face.controls) {
+      hintEl.classList.add("hidden");
+      clearTimeout(hintTimer);
+    }
+    syncControls();
     if (face !== prev) {
       prev?.leave?.();
       face.enter?.();
     }
     if (announce) toast(face.name);
+  }
+
+  function syncControls() {
+    const current = CLOX.faces[faceIndex];
+    for (const face of CLOX.faces) {
+      if (face.controls) face.controls.hidden = galleryOn || face !== current;
+    }
+    galleryButton.hidden = galleryOn || current?.id === "meridian";
+    if (galleryOn) canvas.setAttribute("aria-label", "Clock face gallery. Use arrow keys to choose, Enter to select, and Escape to close.");
+    else if (!current?.controls) canvas.setAttribute("aria-label", `${current?.name || "Clox"}. Press M for world time or G for the face gallery.`);
   }
 
   async function toggleFullscreen() {
@@ -180,12 +200,12 @@
     if (tiles.key === key) return;
     const pad = Math.max(10, Math.round(Math.min(W, H) * 0.018));
     const labelH = Math.max(18, Math.round(H * 0.024));
-    const cols = Math.max(2, Math.ceil(Math.sqrt(n * 1.5)));
+    const cols = Math.max(2, Math.min(n, Math.ceil(Math.sqrt(n * W / Math.max(120, H - 80) / 1.6))));
     const rows = Math.ceil(n / cols);
     let tw = (W - pad * (cols + 1)) / cols;
-    let th = tw * (H / W);
-    const fitH = (H - pad * 2) / rows - labelH - pad * 0.4;
-    if (th > fitH) { th = fitH; tw = th * (W / H); }
+    let th = tw * 0.625;
+    const fitH = Math.max(24, (H - pad * 2 - 68) / rows - labelH - pad * 0.4);
+    if (th > fitH) { th = fitH; tw = th / 0.625; }
     const gridW = cols * (tw + pad) - pad;
     const gridH = rows * (th + labelH + pad * 0.4) - pad * 0.4;
     const dpr = DPR();
@@ -199,8 +219,23 @@
     tiles = {
       key, list, cols, tw, th, pad, labelH,
       left: (W - gridW) / 2,
-      top: (H - gridH) / 2
+      top: (H - 60 - gridH) / 2
     };
+    if (galleryChoices.childElementCount !== n) {
+      galleryChoices.replaceChildren();
+      CLOX.faces.forEach((face, i) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("aria-label", face.name);
+        button.addEventListener("click", () => closeGallery(i));
+        button.addEventListener("focus", () => { galSel = i; });
+        galleryChoices.append(button);
+      });
+    }
+    [...galleryChoices.children].forEach((button, i) => {
+      const { x, y } = tileRect(i);
+      Object.assign(button.style, { left: `${x}px`, top: `${y}px`, width: `${tw}px`, height: `${th + labelH}px` });
+    });
   }
 
   const tileRect = (i) => {
@@ -257,21 +292,42 @@
       }
       ctx.fillStyle = k === galSel ? "rgba(255, 220, 150, 0.95)" : "rgba(255, 255, 255, 0.55)";
       ctx.font = `${k === galSel ? 600 : 400} ${Math.max(11, tiles.labelH * 0.55)}px "Segoe UI", sans-serif`;
-      ctx.fillText(CLOX.faces[k].name, x + tiles.tw / 2, y + tiles.th + tiles.labelH * 0.55,
+      const label = W < 600 ? CLOX.faces[k].name.split(" · ")[0] : CLOX.faces[k].name;
+      ctx.fillText(label, x + tiles.tw / 2, y + tiles.th + tiles.labelH * 0.55,
         tiles.tw * 0.96);
     }
-    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.font = `500 ${Math.max(11, H * 0.015)}px "Segoe UI", sans-serif`;
-    ctx.fillText("↵ select   ·   esc close", W / 2, H - Math.max(14, H * 0.022));
   }
+
+  function openGallery() {
+    if (galleryOn) return;
+    galleryReturnFocus = document.activeElement;
+    galleryOn = true;
+    buildTiles();
+    galSel = faceIndex;
+    galTick = faceIndex;
+    syncControls();
+    galleryDialog.showModal();
+    galleryChoices.children[faceIndex].focus({ preventScroll: true });
+  }
+  CLOX.openGallery = openGallery;
 
   function closeGallery(pick) {
     galleryOn = false;
+    galleryDialog.close();
     if (pick != null) setFace(pick);
     else { beginFade(); lastCycle = performance.now(); }
+    syncControls();
+    const returnTo = galleryReturnFocus;
+    galleryReturnFocus = null;
+    if (returnTo && returnTo !== document.body && returnTo.getClientRects().length) {
+      returnTo.focus({ preventScroll: true });
+    } else canvas.focus({ preventScroll: true });
   }
 
   // ---- Input ----
+  galleryButton.addEventListener("click", openGallery);
+  galleryClose.addEventListener("click", () => closeGallery(null));
+  galleryDialog.addEventListener("cancel", e => { e.preventDefault(); closeGallery(null); });
   window.addEventListener("resize", resize);
   document.addEventListener("fullscreenchange", syncWakeLock);
   document.addEventListener("visibilitychange", () => {
@@ -292,39 +348,32 @@
   window.addEventListener("keydown", warmAudio, { once: false });
   canvas.addEventListener("click", warmAudio);
 
-  canvas.addEventListener("click", (e) => {
-    if (galleryOn) {
-      const n = CLOX.faces.length;
-      for (let k = 0; k < n; k++) {
-        const { x, y } = tileRect(k);
-        if (e.clientX >= x && e.clientX <= x + tiles.tw &&
-            e.clientY >= y && e.clientY <= y + tiles.th) {
-          closeGallery(k);
-          return;
-        }
-      }
-      return;
-    }
-    toggleFullscreen();
-  });
+  canvas.addEventListener("click", toggleFullscreen);
 
   window.addEventListener("keydown", e => {
+    if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
     if (galleryOn) {
+      if (e.target === galleryClose) return;
       const n = CLOX.faces.length;
       switch (e.key) {
         case "ArrowRight": galSel = (galSel + 1) % n; break;
         case "ArrowLeft": galSel = (galSel + n - 1) % n; break;
         case "ArrowDown": galSel = Math.min(n - 1, galSel + tiles.cols); break;
         case "ArrowUp": galSel = Math.max(0, galSel - tiles.cols); break;
+        case "Home": galSel = 0; break;
+        case "End": galSel = n - 1; break;
         case "Enter": case " ": closeGallery(galSel); break;
         case "Escape": case "g": case "G": closeGallery(null); break;
         default: return;
       }
+      if (galleryOn) galleryChoices.children[galSel].focus({ preventScroll: true });
       e.preventDefault();
       return;
     }
+    if (e.target.closest?.("input, select, textarea, dialog, [contenteditable]:not([contenteditable='false'])")) return;
+    if (e.target.closest?.("button") && (e.key === "Enter" || e.key === " ")) return;
     // Number keys jump straight to the first ten faces.
-    if (e.key >= "0" && e.key <= "9" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    if (e.key >= "0" && e.key <= "9") {
       const idx = e.key === "0" ? 9 : +e.key - 1;
       if (idx < CLOX.faces.length) { setFace(idx); e.preventDefault(); }
       return;
@@ -334,10 +383,13 @@
       case "ArrowLeft": setFace(faceIndex - 1); break;
       case "f": case "F": toggleFullscreen(); break;
       case "g": case "G":
-        galleryOn = true;
-        galSel = faceIndex;
-        galTick = faceIndex;               // refresh the current face's tile first
+        openGallery();
         break;
+      case "m": case "M": {
+        const index = CLOX.faces.findIndex(face => face.id === "meridian");
+        if (index !== -1) setFace(index);
+        break;
+      }
       case "s": case "S":
         settings.seconds = !settings.seconds; saveSettings();
         toast(`seconds ${settings.seconds ? "on" : "off"}`); break;
@@ -404,6 +456,7 @@
       return;
     }
 
+    if (CLOX.faces[faceIndex]?.busy?.()) lastCycle = now;
     if (settings.cycle && now - lastCycle > CYCLE_MS) {
       setFace(faceIndex + 1, false);
     }
@@ -440,7 +493,7 @@
     const savedIdx = CLOX.faces.findIndex(f => f.id === settings.faceId);
     setFace(savedIdx >= 0 ? savedIdx : 0, false, false, false);   // fires enter() via prev=null
     started = true;
-    showHint();
+    if (!CLOX.faces[faceIndex].controls) showHint();
     pokeCursor();
     requestAnimationFrame(frame);
   });
