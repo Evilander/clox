@@ -59,7 +59,7 @@ class MeridianBrowserTests(unittest.TestCase):
         self.assertFalse(self.state()["live"])
 
     def test_launches_from_disk_with_all_faces_and_real_zone_times(self):
-        self.assertEqual(self.page.evaluate("CLOX.faces.length"), 23)
+        self.assertEqual(self.page.evaluate("CLOX.faces.length"), 24)
         self.assertTrue(self.page.locator('#hint').evaluate('el => el.classList.contains("hidden")'))
         self.assertEqual(self.state()["ids"], ["chicago", "london", "tokyo", "sydney"])
         self.page.wait_for_function("document.getElementById('meridian-summary').textContent.includes('09:24')")
@@ -202,7 +202,7 @@ class MeridianBrowserTests(unittest.TestCase):
         self.assertTrue(self.page.locator('#face-gallery').is_visible())
         self.assertEqual(self.page.evaluate('document.activeElement.getAttribute("aria-label")'), 'Meridian · World Time')
         choices = self.page.locator('#gallery-buttons button')
-        self.assertEqual(choices.count(), 23)
+        self.assertEqual(choices.count(), 24)
         for box in choices.evaluate_all('els => els.map(el => {const r=el.getBoundingClientRect(); return {w:r.width,h:r.height}})'):
             self.assertGreaterEqual(box['w'], 44)
             self.assertGreaterEqual(box['h'], 44)

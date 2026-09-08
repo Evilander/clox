@@ -28,10 +28,19 @@
   let bezelCache = { key: "", canvas: null };
   let dateRoll = { lastDate: null, prevDate: null, t0: 0 };
 
+  function releaseBezelCache() {
+    if (bezelCache.canvas) {
+      bezelCache.canvas.width = 0;
+      bezelCache.canvas.height = 0;
+    }
+    bezelCache = { key: "", canvas: null };
+  }
+
   function bezelTexture(R, FR) {
     const scale = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(R)}@${scale}`;
     if (bezelCache.key === key) return bezelCache.canvas;
+    releaseBezelCache();
     const c = document.createElement("canvas");
     c.width = Math.max(2, Math.round(R * 2 * scale));
     c.height = Math.max(2, Math.round(R * 2 * scale));
@@ -66,6 +75,10 @@
     id: "sweep",
     name: "Sweep · Wall Clock",
 
+    leave() {
+      releaseBezelCache();
+    },
+
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
       if (dateRoll.lastDate === null) {
@@ -84,6 +97,16 @@
       g.addColorStop(1, "#131417");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.018)";
+      const wallStep = Math.max(90, W / 18);
+      for (let x = -wallStep; x < W + wallStep; x += wallStep) {
+        ctx.fillRect(x, 0, Math.max(1, wallStep * 0.012), H);
+      }
+      g = ctx.createLinearGradient(0, H * 0.70, 0, H);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.32)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.65, W, H * 0.35);
 
       // Clock shadow on the wall.
       ctx.save();
@@ -99,6 +122,17 @@
 
       ctx.save();
       ctx.translate(cx, cy);
+
+      // Thick case side, visible around the polished bezel.
+      g = ctx.createLinearGradient(-R, -R, R, R);
+      g.addColorStop(0, "#f1f2f0");
+      g.addColorStop(0.16, "#b2b5b8");
+      g.addColorStop(0.64, "#5f646a");
+      g.addColorStop(1, "#202329");
+      ctx.beginPath();
+      ctx.arc(R * 0.025, R * 0.035, R * 1.018, 0, U.TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
 
       // Brushed-metal bezel (conic gradient where supported).
       let bezel;
@@ -119,6 +153,14 @@
       ctx.arc(0, 0, R, 0, U.TAU);
       ctx.fillStyle = bezel;
       ctx.fill();
+      g = ctx.createRadialGradient(-R * 0.25, -R * 0.32, R * 0.45, 0, 0, R);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.20)");
+      g.addColorStop(0.62, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.20)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, U.TAU);
+      ctx.fill();
       ctx.beginPath();
       ctx.arc(0, 0, R * 0.985, 0, U.TAU);
       ctx.strokeStyle = "rgba(255,255,255,0.35)";
@@ -135,6 +177,14 @@
       ctx.beginPath();
       ctx.arc(0, 0, FR, 0, U.TAU);
       ctx.fillStyle = g;
+      ctx.fill();
+      g = ctx.createLinearGradient(-FR * 0.6, -FR, FR * 0.8, FR);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.10)");
+      g.addColorStop(0.48, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(80, 64, 38, 0.08)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, FR, 0, U.TAU);
       ctx.fill();
       // Inner shadow where dial meets bezel.
       ctx.beginPath();
@@ -256,6 +306,18 @@
       g.addColorStop(0, "rgba(255, 255, 255, 0.16)");
       g.addColorStop(0.35, "rgba(255, 255, 255, 0.05)");
       g.addColorStop(0.6, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      g = ctx.createLinearGradient(-FR * 0.75, -FR * 0.9, FR * 0.55, FR * 0.35);
+      g.addColorStop(0, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.42, "rgba(255, 255, 255, 0.13)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.035)");
+      g.addColorStop(0.60, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      g = ctx.createRadialGradient(0, 0, FR * 0.72, 0, 0, FR);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.16)");
       ctx.fillStyle = g;
       ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
 

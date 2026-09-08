@@ -47,9 +47,38 @@
       g.addColorStop(1, "#0d0f12");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.04)");
+      g.addColorStop(0.12, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.72, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.46)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.025)";
+      ctx.fillRect(0, H * 0.13, W, Math.max(1, H * 0.002));
+      ctx.fillRect(0, H * 0.82, W, Math.max(1, H * 0.002));
+      const armW = R * 0.18;
+      g = ctx.createLinearGradient(cx - armW, 0, cx + armW, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(0.28, "#07080a");
+      g.addColorStop(0.72, "#1c1e23");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, cx - armW, H * 0.05, armW * 2, H * 0.17, R * 0.025);
+      ctx.fill();
 
       ctx.save();
       ctx.translate(cx, cy);
+
+      // Deep enamel case side, offset just enough to read as a real object.
+      g = ctx.createLinearGradient(-R, -R, R, R);
+      g.addColorStop(0, "#24262a");
+      g.addColorStop(0.45, "#08090b");
+      g.addColorStop(1, "#000000");
+      ctx.beginPath();
+      ctx.arc(R * 0.026, R * 0.036, R * 1.02, 0, U.TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
 
       // Housing shadow + black rim.
       ctx.save();
@@ -65,6 +94,11 @@
       ctx.arc(0, 0, R * 0.985, 0, U.TAU);
       ctx.strokeStyle = "#2e2e30";
       ctx.lineWidth = R * 0.006;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.935, 0, U.TAU);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.10)";
+      ctx.lineWidth = R * 0.018;
       ctx.stroke();
 
       // Impulse vibration: the movement (dial, markers, hands) shivers
@@ -89,6 +123,14 @@
       ctx.beginPath();
       ctx.arc(0, 0, FR, 0, U.TAU);
       ctx.fillStyle = g;
+      ctx.fill();
+      g = ctx.createRadialGradient(-FR * 0.12, -FR * 0.18, FR * 0.18, 0, 0, FR);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+      g.addColorStop(0.72, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.10)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, FR, 0, U.TAU);
       ctx.fill();
 
       // Markers: 12 heavy hour bars, 48 light minute bars.
@@ -148,6 +190,10 @@
       ctx.arc(0, 0, R * 0.026, 0, U.TAU);
       ctx.fillStyle = "#eb0000";
       ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.012, 0, U.TAU);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.fill();
 
       ctx.restore(); // end impulse vibration
 
@@ -159,6 +205,13 @@
       g.addColorStop(0, "rgba(255, 255, 255, 0.20)");
       g.addColorStop(0.3, "rgba(255, 255, 255, 0.04)");
       g.addColorStop(0.55, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      g = ctx.createLinearGradient(-FR * 0.70, -FR * 0.88, FR * 0.62, FR * 0.38);
+      g.addColorStop(0, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.45, "rgba(255, 255, 255, 0.16)");
+      g.addColorStop(0.53, "rgba(255, 255, 255, 0.035)");
+      g.addColorStop(0.66, "rgba(255, 255, 255, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
       // Second, fainter highlight, lower-right.

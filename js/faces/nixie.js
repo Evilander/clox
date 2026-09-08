@@ -13,11 +13,19 @@
   // Honeycomb mesh is static per tube size — render once to an offscreen
   // canvas instead of stroking ~200 hexagons every frame.
   let meshCache = { key: "", canvas: null };
+  function releaseMeshCache() {
+    if (meshCache.canvas) {
+      meshCache.canvas.width = 0;
+      meshCache.canvas.height = 0;
+    }
+    meshCache = { key: "", canvas: null };
+  }
 
   function mesh(w, h) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(w)}x${Math.round(h)}@${dpr}`;
     if (meshCache.key === key) return meshCache.canvas;
+    releaseMeshCache();
     const c = document.createElement("canvas");
     c.width = Math.max(2, Math.round(w * dpr));
     c.height = Math.max(2, Math.round(h * dpr));
@@ -47,11 +55,19 @@
 
   // Walnut base grain is also static per size — cache it the same way.
   let grainCache = { key: "", canvas: null };
+  function releaseGrainCache() {
+    if (grainCache.canvas) {
+      grainCache.canvas.width = 0;
+      grainCache.canvas.height = 0;
+    }
+    grainCache = { key: "", canvas: null };
+  }
 
   function grain(w, h) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(w)}x${Math.round(h)}@${dpr}`;
     if (grainCache.key === key) return grainCache.canvas;
+    releaseGrainCache();
     const c = document.createElement("canvas");
     c.width = Math.max(2, Math.round(w * dpr));
     c.height = Math.max(2, Math.round(h * dpr));
@@ -81,6 +97,15 @@
   const tubeState = new Map();
   const FADE_MS = 260, BLOOM_MS = 120;
 
+  function envelopePath(ctx, x, y, w, h, glassTop, domeR) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, glassTop + domeR);
+    ctx.arc(x + w / 2, glassTop + domeR, domeR, Math.PI, 0);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+  }
+
   function tube(ctx, x, y, w, h, digit, idx, now) {
     const domeR = w * 0.48;
     const glassTop = y - w * 0.30;
@@ -105,12 +130,7 @@
 
     // Glass envelope.
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(x, glassTop + domeR);
-    ctx.arc(x + w / 2, glassTop + domeR, domeR, Math.PI, 0);
-    ctx.lineTo(x + w, y + h);
-    ctx.closePath();
+    envelopePath(ctx, x, y, w, h, glassTop, domeR);
 
     let g = ctx.createLinearGradient(x, 0, x + w, 0);
     g.addColorStop(0, "rgba(120, 130, 140, 0.10)");
@@ -123,9 +143,32 @@
     ctx.strokeStyle = "rgba(190, 205, 220, 0.16)";
     ctx.lineWidth = Math.max(1, w * 0.02);
     ctx.stroke();
+    envelopePath(ctx, x, y, w, h, glassTop, domeR);
+    ctx.strokeStyle = "rgba(230, 240, 250, 0.11)";
+    ctx.lineWidth = Math.max(1, w * 0.042);
+    ctx.stroke();
+    envelopePath(ctx, x + w * 0.025, y + h * 0.01, w * 0.95, h * 0.985, glassTop + w * 0.05, domeR * 0.92);
+    ctx.strokeStyle = "rgba(40, 55, 65, 0.30)";
+    ctx.lineWidth = Math.max(1, w * 0.012);
+    ctx.stroke();
+    envelopePath(ctx, x, y, w, h, glassTop, domeR);
     ctx.clip(); // everything inside the glass from here on
 
     const cxp = x + w / 2, cyp = y + h * 0.56;
+    // Rear support rods and mica spacers, visible through the glass.
+    ctx.strokeStyle = "rgba(210, 140, 80, 0.16)";
+    ctx.lineWidth = Math.max(1, w * 0.012);
+    for (const fx of [0.22, 0.78]) {
+      ctx.beginPath();
+      ctx.moveTo(x + w * fx, glassTop + w * 0.35);
+      ctx.lineTo(x + w * fx, y + h * 0.90);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(255, 205, 150, 0.07)";
+    U.roundRect(ctx, x + w * 0.20, y + h * 0.17, w * 0.60, h * 0.055, w * 0.018);
+    ctx.fill();
+    U.roundRect(ctx, x + w * 0.18, y + h * 0.82, w * 0.64, h * 0.045, w * 0.018);
+    ctx.fill();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = font(h);
@@ -228,6 +271,17 @@
     g.addColorStop(1, "rgba(255, 255, 255, 0)");
     ctx.fillStyle = g;
     ctx.fillRect(x + w * 0.06, glassTop + w * 0.1, w * 0.16, y + h - glassTop - w * 0.2);
+    g = ctx.createLinearGradient(x + w * 0.70, 0, x + w, 0);
+    g.addColorStop(0, "rgba(255, 255, 255, 0)");
+    g.addColorStop(0.55, "rgba(255, 255, 255, 0.07)");
+    g.addColorStop(1, "rgba(0, 0, 0, 0.14)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x + w * 0.55, glassTop + w * 0.08, w * 0.42, y + h - glassTop - w * 0.12);
+    g = ctx.createRadialGradient(cxp, glassTop + domeR * 0.94, domeR * 0.12, cxp, glassTop + domeR, domeR);
+    g.addColorStop(0, "rgba(0, 0, 0, 0)");
+    g.addColorStop(1, "rgba(0, 0, 0, 0.18)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, glassTop, w, y + h - glassTop);
     ctx.restore();
 
     // Socket under the tube, lit faintly by the digit above.
@@ -243,6 +297,20 @@
     sg.addColorStop(1, "rgba(255, 100, 20, 0)");
     ctx.fillStyle = sg;
     ctx.fillRect(x - w * 0.1, y + h - sh * 0.2, w * 1.2, sh * 1.4);
+    sg = ctx.createRadialGradient(x + w / 2, y + h + sh * 0.18, w * 0.10, x + w / 2, y + h + sh * 0.18, w * 0.60);
+    sg.addColorStop(0, "#100a06");
+    sg.addColorStop(0.58, "#050302");
+    sg.addColorStop(0.72, "#8b5524");
+    sg.addColorStop(1, "#1a0f08");
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h + sh * 0.18, w * 0.49, sh * 0.48, 0, 0, U.TAU);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 185, 90, 0.28)";
+    ctx.lineWidth = Math.max(1, w * 0.012);
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h + sh * 0.18, w * 0.42, sh * 0.34, 0, 0, U.TAU);
+    ctx.stroke();
 
     // Three pins under the socket, seated into the walnut base.
     const pinW = w * 0.03, pinH = h * 0.035;
@@ -284,6 +352,11 @@
     id: "nixie",
     name: "Nixie · IN-18",
 
+    leave() {
+      releaseMeshCache();
+      releaseGrainCache();
+    },
+
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
 
@@ -295,12 +368,18 @@
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      g = ctx.createLinearGradient(0, H * 0.52, 0, H);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(0.5, "rgba(70, 32, 12, 0.20)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.78)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.48, W, H * 0.52);
 
       const digits = (settings.h24 ? U.pad2(t.H) : U.pad2(t.h)) + U.pad2(t.m)
         + (settings.seconds ? U.pad2(t.s) : "");
       const groups = digits.length / 2;
 
-      let th = Math.min(H * 0.42, W * 0.28);            // tube height
+      let th = Math.min(H * 0.46, W * 0.28);            // tube height
       let tw = th * 0.60;
       let inGap = tw * 0.18, groupGap = tw * 0.55;
       const total = () =>
@@ -315,7 +394,37 @@
       const y0 = (H - th) / 2;
 
       // Walnut base under all tubes.
-      const bx = x0 - tw * 0.5, bw = total() + tw, by = y0 + th + th * 0.06, bh = th * 0.16;
+      const bx = x0 - tw * 0.55, bw = total() + tw * 1.1, by = y0 + th + th * 0.05, bh = th * 0.22;
+      g = ctx.createRadialGradient(W / 2, by + bh * 0.65, th * 0.10, W / 2, by + bh, bw * 0.62);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.70)");
+      g.addColorStop(0.7, "rgba(0, 0, 0, 0.22)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(bx - tw, by - bh * 0.5, bw + tw * 2, bh * 2.4);
+      // Brass bus wires and ceramic spacers behind the tubes.
+      ctx.strokeStyle = "rgba(180, 98, 42, 0.38)";
+      ctx.lineWidth = Math.max(1.5, th * 0.009);
+      for (const fy of [0.21, 0.74]) {
+        ctx.beginPath();
+        ctx.moveTo(x0 - tw * 0.18, y0 + th * fy);
+        ctx.lineTo(x0 + total() + tw * 0.18, y0 + th * fy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(255, 218, 170, 0.10)";
+      for (let i = 0; i < digits.length; i++) {
+        const tubeX = x0 + i * (tw + inGap) + Math.floor(i / 2) * (groupGap - inGap);
+        ctx.beginPath();
+        ctx.ellipse(tubeX + tw * 0.5, y0 + th * 0.92, tw * 0.20, th * 0.025, 0, 0, U.TAU);
+        ctx.fill();
+      }
+      const plinthY = by + bh * 0.46;
+      g = ctx.createLinearGradient(0, plinthY, 0, plinthY + bh * 0.72);
+      g.addColorStop(0, "#5b351a");
+      g.addColorStop(0.28, "#35200f");
+      g.addColorStop(1, "#100905");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bx - tw * 0.18, plinthY, bw + tw * 0.36, bh * 0.76, bh * 0.18);
+      ctx.fill();
       g = ctx.createLinearGradient(0, by, 0, by + bh);
       g.addColorStop(0, "#4a2f1b");
       g.addColorStop(0.15, "#3a2413");
@@ -330,6 +439,26 @@
       ctx.restore();
       ctx.fillStyle = "rgba(255, 190, 120, 0.08)";
       ctx.fillRect(bx + bh * 0.2, by, bw - bh * 0.4, Math.max(1, bh * 0.05));
+      g = ctx.createLinearGradient(0, by + bh * 0.10, 0, by + bh * 0.18);
+      g.addColorStop(0, "rgba(255, 205, 105, 0.30)");
+      g.addColorStop(1, "rgba(95, 45, 12, 0.22)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bx + bh * 0.28, by + bh * 0.11, bw - bh * 0.56, bh * 0.045, bh * 0.02);
+      ctx.fill();
+      g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.38)");
+      g.addColorStop(0.12, "rgba(255, 220, 150, 0.08)");
+      g.addColorStop(0.50, "rgba(255, 160, 70, 0.03)");
+      g.addColorStop(0.88, "rgba(255, 220, 150, 0.05)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.45)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bx, by, bw, bh, bh * 0.25);
+      ctx.fill();
+      ctx.fillStyle = "rgba(12, 8, 5, 0.60)";
+      for (const fx of [0.08, 0.92]) {
+        U.roundRect(ctx, bx + bw * fx - bh * 0.22, by + bh * 0.78, bh * 0.44, bh * 0.55, bh * 0.08);
+        ctx.fill();
+      }
 
       // Tubes + separators.
       let x = x0, di = 0;

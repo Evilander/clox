@@ -26,10 +26,19 @@
   // offscreen canvas instead of stippling ~540 specks every frame.
   let grainCache = { key: "", canvas: null };
 
+  function releaseGrainCache() {
+    if (grainCache.canvas) {
+      grainCache.canvas.width = 0;
+      grainCache.canvas.height = 0;
+    }
+    grainCache = { key: "", canvas: null };
+  }
+
   function grainTexture(FR) {
     const scale = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(FR)}@${scale}`;
     if (grainCache.key === key) return grainCache.canvas;
+    releaseGrainCache();
     const c = document.createElement("canvas");
     c.width = Math.max(2, Math.round(FR * 2 * scale));
     c.height = Math.max(2, Math.round(FR * 2 * scale));
@@ -60,6 +69,10 @@
     id: "braun",
     name: "Braun · Minimal",
 
+    leave() {
+      releaseGrainCache();
+    },
+
     draw(ctx, W, H, d, settings) {
       const t = U.timeParts(d, true);
       const cx = W / 2, cy = H / 2;
@@ -71,9 +84,29 @@
       g.addColorStop(1, "#101113");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.015)";
+      const panel = Math.max(120, W / 16);
+      for (let x = panel * 0.5; x < W; x += panel) {
+        ctx.fillRect(x, 0, Math.max(1, panel * 0.010), H);
+      }
+      g = ctx.createLinearGradient(0, H * 0.68, 0, H);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.26)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.62, W, H * 0.38);
 
       ctx.save();
       ctx.translate(cx, cy);
+
+      // Case thickness offset from the front face.
+      g = ctx.createLinearGradient(-R, -R, R, R);
+      g.addColorStop(0, "#272a2d");
+      g.addColorStop(0.40, "#141619");
+      g.addColorStop(1, "#050607");
+      ctx.beginPath();
+      ctx.arc(R * 0.024, R * 0.034, R * 1.018, 0, U.TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
 
       // Matte case: shallow dark ring, no ornament.
       ctx.save();
@@ -90,6 +123,11 @@
       ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
       ctx.lineWidth = R * 0.006;
       ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.94, 0, U.TAU);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.lineWidth = R * 0.030;
+      ctx.stroke();
 
       // Off-white dial.
       const FR = R * 0.93;
@@ -101,6 +139,14 @@
       ctx.fillStyle = g;
       ctx.fill();
       ctx.drawImage(grainTexture(FR), -FR, -FR, FR * 2, FR * 2);
+      g = ctx.createLinearGradient(-FR * 0.7, -FR, FR * 0.6, FR);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.09)");
+      g.addColorStop(0.42, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(95, 88, 70, 0.06)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, FR, 0, U.TAU);
+      ctx.fill();
 
       // Thin ticks: every minute, hours slightly longer. No bezel clutter.
       for (let i = 0; i < 60; i++) {
@@ -179,6 +225,10 @@
       ctx.arc(0, 0, R * 0.014, 0, U.TAU);
       ctx.fillStyle = "#1c1c1a";
       ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.006, 0, U.TAU);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+      ctx.fill();
 
       // Very subtle domed-glass sheen.
       ctx.beginPath();
@@ -188,6 +238,18 @@
       g.addColorStop(0, "rgba(255, 255, 255, 0.10)");
       g.addColorStop(0.4, "rgba(255, 255, 255, 0.02)");
       g.addColorStop(0.6, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      g = ctx.createLinearGradient(-FR * 0.75, -FR * 0.82, FR * 0.62, FR * 0.45);
+      g.addColorStop(0, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.45, "rgba(255, 255, 255, 0.115)");
+      g.addColorStop(0.55, "rgba(255, 255, 255, 0.025)");
+      g.addColorStop(0.70, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
+      g = ctx.createRadialGradient(0, 0, FR * 0.72, 0, 0, FR);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.13)");
       ctx.fillStyle = g;
       ctx.fillRect(-FR, -FR, FR * 2, FR * 2);
 

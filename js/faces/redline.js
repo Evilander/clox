@@ -33,6 +33,12 @@
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      g = ctx.createLinearGradient(0, H * 0.52, 0, H);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(0.42, "rgba(20, 5, 3, 0.24)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.78)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.46, W, H * 0.54);
 
       // ---- Layout ----
       const hs = settings.h24 ? U.pad2(t.H) : String(t.h).padStart(2, " ");
@@ -67,11 +73,23 @@
       const y0 = (H - dh) / 2;
 
       // ---- Clock-radio enclosure the display sits in ----
-      const caseX = x0 - dh * 0.9, caseW = totalW + dh * 1.8;
+      const caseW = Math.min(W * 0.94, Math.max(totalW + dh * 1.15, W * 0.70));
+      const caseX = W / 2 - caseW / 2;
       const caseY = y0 - dh * 0.45, caseH = dh * 1.9;
+      const footY = caseY + caseH - dh * 0.02;
+      g = ctx.createRadialGradient(W / 2, footY, dh * 0.15, W / 2, footY + dh * 0.18, caseW * 0.58);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.62)");
+      g.addColorStop(0.65, "rgba(0, 0, 0, 0.20)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(caseX - dh * 0.35, footY - dh * 0.12, caseW + dh * 0.7, dh * 0.54);
       // Snooze bar on top.
-      ctx.fillStyle = "#191518";
-      U.roundRect(ctx, W / 2 - caseW * 0.15, caseY - dh * 0.075, caseW * 0.30, dh * 0.10, dh * 0.03);
+      g = ctx.createLinearGradient(0, caseY - dh * 0.09, 0, caseY + dh * 0.04);
+      g.addColorStop(0, "#272126");
+      g.addColorStop(0.45, "#171217");
+      g.addColorStop(1, "#090708");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, W / 2 - caseW * 0.15, caseY - dh * 0.085, caseW * 0.30, dh * 0.12, dh * 0.035);
       ctx.fill();
       ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
       ctx.fillRect(W / 2 - caseW * 0.15 + dh * 0.03, caseY - dh * 0.075, caseW * 0.30 - dh * 0.06, Math.max(1, dh * 0.008));
@@ -88,6 +106,40 @@
       U.roundRect(ctx, caseX, caseY, caseW, caseH, dh * 0.12);
       ctx.fill();
       ctx.restore();
+      // Plastic bevels: top lip, side falloff, and a recessed acrylic bay.
+      g = ctx.createLinearGradient(0, caseY, 0, caseY + caseH);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.08)");
+      g.addColorStop(0.08, "rgba(255, 255, 255, 0.018)");
+      g.addColorStop(0.72, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.36)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, caseX, caseY, caseW, caseH, dh * 0.12);
+      ctx.fill();
+      g = ctx.createLinearGradient(caseX, 0, caseX + caseW, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.46)");
+      g.addColorStop(0.08, "rgba(255, 255, 255, 0.025)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.92, "rgba(255, 255, 255, 0.018)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.54)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, caseX, caseY, caseW, caseH, dh * 0.12);
+      ctx.fill();
+      const bayX = Math.max(caseX + dh * 0.12, x0 - dh * 0.25);
+      const bayY = y0 - dh * 0.30;
+      const bayW = Math.min(caseX + caseW - bayX - dh * 0.12, totalW + dh * 0.50);
+      const bayH = dh * 1.58;
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+      ctx.shadowBlur = dh * 0.06;
+      ctx.shadowOffsetY = dh * 0.025;
+      g = ctx.createLinearGradient(0, bayY, 0, bayY + bayH);
+      g.addColorStop(0, "#030202");
+      g.addColorStop(0.40, "#080304");
+      g.addColorStop(1, "#010101");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bayX, bayY, bayW, bayH, dh * 0.055);
+      ctx.fill();
+      ctx.restore();
       // Speaker grille, left side.
       const slotH = dh * 0.9, slotY = caseY + (caseH - slotH) / 2;
       for (let i = 0; i < 8; i++) {
@@ -98,6 +150,9 @@
         ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
         ctx.fillRect(sx + dh * 0.038, slotY, 1, slotH);
       }
+      ctx.fillStyle = "rgba(255, 80, 45, 0.045)";
+      U.roundRect(ctx, caseX + dh * 0.11, slotY - dh * 0.08, dh * 0.78, slotH + dh * 0.16, dh * 0.035);
+      ctx.fill();
       // Model text, bottom-right of the case.
       ctx.font = `500 ${Math.max(10, dh * 0.055)}px "Segoe UI", sans-serif`;
       ctx.textAlign = "right";
@@ -236,6 +291,22 @@
       ctx.fillRect(caseX, bandY, caseW, bandH);
       ctx.fillStyle = "rgba(255, 120, 90, 0.05)";
       ctx.fillRect(caseX, bandY, caseW, Math.max(1, dh * 0.006));
+      ctx.save();
+      U.roundRect(ctx, bayX, bandY, bayW, bandH, dh * 0.055);
+      ctx.clip();
+      g = ctx.createLinearGradient(bayX + bayW * 0.08, bandY, bayX + bayW * 0.62, bandY + bandH);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+      g.addColorStop(0.18, "rgba(255, 255, 255, 0.025)");
+      g.addColorStop(0.30, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.74, "rgba(255, 85, 45, 0.035)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.12)");
+      ctx.fillStyle = g;
+      ctx.fillRect(bayX, bandY, bayW, bandH);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+      ctx.beginPath();
+      ctx.ellipse(bayX + bayW * 0.33, bandY + bandH * 0.12, bayW * 0.32, bandH * 0.10, -0.08, 0, U.TAU);
+      ctx.fill();
+      ctx.restore();
 
       // Subtle scanlines across the window band.
       ctx.fillStyle = "rgba(0, 0, 0, 0.10)";

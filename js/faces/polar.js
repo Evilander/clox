@@ -4,6 +4,11 @@
 "use strict";
 
 (() => {
+  const hash = (i) => {
+    const x = Math.sin(i * 127.1 + 19.9) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
   function ring(ctx, r, frac, width, color) {
     const start = -Math.PI / 2;
     // Track.
@@ -114,27 +119,78 @@
   CLOX.register({
     id: "polar",
     name: "Polar · Radial Arcs",
+    leave() {
+      tickCache = { key: "", canvas: null };
+      pulses.length = 0;
+      prevFrac.s = prevFrac.m = prevFrac.h = null;
+    },
 
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
       const cx = W / 2, cy = H / 2;
-      const R = Math.min(W, H) * 0.38;
+      const R = Math.min(W, H) * 0.42;
 
-      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7);
-      g.addColorStop(0, "#101318");
-      g.addColorStop(1, "#06080b");
+      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
+      g.addColorStop(0, "#141a21");
+      g.addColorStop(0.52, "#090d13");
+      g.addColorStop(1, "#030508");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      const unit = Math.min(W, H);
+      ctx.strokeStyle = "rgba(110, 150, 190, 0.055)";
+      ctx.lineWidth = Math.max(1, unit * 0.001);
+      const grid = Math.max(44, unit * 0.075);
+      ctx.beginPath();
+      for (let x = (W / 2) % grid; x < W; x += grid) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = (H / 2) % grid; y < H; y += grid) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+      for (let i = 0; i < 36; i++) {
+        const sx = (0.08 + hash(i) * 0.84) * W;
+        const sy = (0.06 + hash(i + 90) * 0.86) * H;
+        const tw = 0.35 + 0.65 * Math.sin(now * 0.001 + i * 1.7);
+        ctx.fillStyle = `rgba(140, 190, 230, ${0.04 + tw * 0.08})`;
+        ctx.fillRect(sx, sy, hash(i + 8) < 0.22 ? 2 : 1, hash(i + 17) < 0.22 ? 2 : 1);
+      }
 
       ctx.save();
       ctx.translate(cx, cy);
+
+      // Smoked glass under the arcs gives the radial display more mass.
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+      ctx.shadowBlur = R * 0.16;
+      ctx.shadowOffsetY = R * 0.05;
+      g = ctx.createRadialGradient(-R * 0.24, -R * 0.28, 0, 0, 0, R * 1.03);
+      g.addColorStop(0, "rgba(70, 88, 102, 0.38)");
+      g.addColorStop(0.58, "rgba(20, 28, 36, 0.46)");
+      g.addColorStop(1, "rgba(6, 9, 14, 0.82)");
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 1.02, 0, U.TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+      for (const rr of [1.02, 0.89, 0.73, 0.55]) {
+        ctx.beginPath();
+        ctx.arc(0, 0, R * rr, 0, U.TAU);
+        ctx.strokeStyle = rr === 1.02 ? "rgba(205, 225, 245, 0.22)" : "rgba(205, 225, 245, 0.08)";
+        ctx.lineWidth = Math.max(1, R * (rr === 1.02 ? 0.006 : 0.003));
+        ctx.stroke();
+      }
+      g = ctx.createLinearGradient(-R * 0.5, -R * 0.82, R * 0.55, R * 0.45);
+      g.addColorStop(0.10, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.34, "rgba(255, 255, 255, 0.085)");
+      g.addColorStop(0.45, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 1.00, 0, U.TAU);
+      ctx.fill();
 
       // Twelve faint reference dots outside the outer ring.
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * U.TAU - Math.PI / 2;
         ctx.beginPath();
-        ctx.arc(Math.cos(a) * R * 1.10, Math.sin(a) * R * 1.10, R * 0.008, 0, U.TAU);
-        ctx.fillStyle = i === 0 ? "rgba(255,255,255,0.5)" : "rgba(255, 255, 255, 0.18)";
+        ctx.arc(Math.cos(a) * R * 1.10, Math.sin(a) * R * 1.10, R * (i % 3 === 0 ? 0.012 : 0.007), 0, U.TAU);
+        ctx.fillStyle = i === 0 ? "rgba(255,255,255,0.65)" : "rgba(255, 255, 255, 0.22)";
         ctx.fill();
       }
 
@@ -164,22 +220,36 @@
       // Center readout: thin digits, small date.
       const hs = settings.h24 ? U.pad2(t.H) : String(t.h);
       ctx.fillStyle = "#eef2f6";
-      ctx.font = `200 ${R * 0.30}px "Segoe UI", system-ui, sans-serif`;
+      ctx.font = `300 ${R * 0.34}px "Segoe UI", system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(`${hs}:${U.pad2(t.m)}`, 0, R * 0.05);
-      ctx.fillStyle = "rgba(238, 242, 246, 0.45)";
-      ctx.font = `300 ${R * 0.072}px "Segoe UI", system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(238, 242, 246, 0.52)";
+      ctx.font = `400 ${R * 0.074}px "Segoe UI", system-ui, sans-serif`;
       ctx.fillText(
         `${U.DAYS[t.day]} ${U.MONTHS[t.month]} ${t.date}` +
         (settings.h24 ? "" : (t.pm ? " · PM" : " · AM")),
         0, R * 0.19
       );
       if (settings.seconds) {
-        ctx.fillStyle = "rgba(238, 242, 246, 0.35)";
-        ctx.font = `300 ${R * 0.06}px "Segoe UI", system-ui, sans-serif`;
+        ctx.fillStyle = "rgba(238, 242, 246, 0.50)";
+        ctx.font = `500 ${R * 0.074}px "Segoe UI", system-ui, sans-serif`;
         ctx.fillText(U.pad2(t.s), 0, R * 0.29);
       }
+      ctx.font = `600 ${R * 0.036}px "Segoe UI", system-ui, sans-serif`;
+      ctx.textBaseline = "middle";
+      const labels = settings.seconds
+        ? [["SECONDS", "#38cfff"], ["MINUTES", "#ff5f9e"], ["HOURS", "#ffc14d"]]
+        : [["MINUTES", "#ff5f9e"], ["HOURS", "#ffc14d"]];
+      labels.forEach(([label, col], i) => {
+        const y = R * (0.43 + i * 0.064);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(-R * 0.20, y - R * 0.010, R * 0.010, 0, U.TAU);
+        ctx.fill();
+        ctx.fillStyle = "rgba(238, 242, 246, 0.42)";
+        ctx.fillText(label, 0, y);
+      });
       ctx.restore();
     }
   });

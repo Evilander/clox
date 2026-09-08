@@ -65,8 +65,45 @@
       const pyy = (H - ph) / 2 + dh * 0.05;
       const bez = dh * 0.42;
 
-      // Strap lugs, tucked behind the case top and bottom.
+      // Full resin strap, tucked behind the case with molded ridges.
       const lugW = pw * 0.45, lugH = dh * 0.35;
+      const strapW = Math.min(pw * 0.34, dh * 1.65);
+      const strapX = W / 2 - strapW / 2;
+      g = ctx.createLinearGradient(strapX, 0, strapX + strapW, 0);
+      g.addColorStop(0, "#07080c");
+      g.addColorStop(0.18, "#181b23");
+      g.addColorStop(0.50, "#10131a");
+      g.addColorStop(0.82, "#1c2028");
+      g.addColorStop(1, "#050609");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, strapX, -dh * 0.2, strapW, pyy - dh * 0.05, dh * 0.08);
+      ctx.fill();
+      U.roundRect(ctx, strapX, pyy + ph + dh * 0.05, strapW, H - (pyy + ph) + dh * 0.2, dh * 0.08);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
+      ctx.lineWidth = Math.max(1, dh * 0.010);
+      for (let i = 0; i < 6; i++) {
+        const yy = pyy - dh * 0.58 - i * dh * 0.19;
+        ctx.beginPath();
+        ctx.moveTo(strapX + strapW * 0.18, yy);
+        ctx.lineTo(strapX + strapW * 0.82, yy);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 6; i++) {
+        const yy = pyy + ph + dh * 0.58 + i * dh * 0.19;
+        ctx.beginPath();
+        ctx.moveTo(strapX + strapW * 0.18, yy);
+        ctx.lineTo(strapX + strapW * 0.82, yy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(0, 0, 0, 0.42)";
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.ellipse(W / 2, pyy + ph + dh * (0.72 + i * 0.35), strapW * 0.12, dh * 0.045, 0, 0, U.TAU);
+        ctx.fill();
+      }
+
+      // Strap lugs, tucked behind the case top and bottom.
       for (const s of [-1, 1]) {
         const ly = s < 0 ? pyy - bez - lugH : pyy + ph + bez;
         ctx.fillStyle = "#101116";
@@ -95,6 +132,28 @@
       U.roundRect(ctx, pxx - bez, pyy - bez, pw + bez * 2, ph + bez * 2, dh * 0.28);
       ctx.fill();
       ctx.restore();
+      g = ctx.createLinearGradient(pxx - bez, 0, pxx + pw + bez, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.38)");
+      g.addColorStop(0.12, "rgba(255, 255, 255, 0.060)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.012)");
+      g.addColorStop(0.88, "rgba(255, 255, 255, 0.036)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.46)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, pxx - bez, pyy - bez, pw + bez * 2, ph + bez * 2, dh * 0.28);
+      ctx.fill();
+
+      // Side pushers, proud of the resin body.
+      for (const side of [-1, 1]) {
+        const bx = side < 0 ? pxx - bez - dh * 0.10 : pxx + pw + bez - dh * 0.02;
+        for (const fy of [0.22, 0.50]) {
+          g = ctx.createLinearGradient(side < 0 ? bx + dh * 0.14 : bx, 0, side < 0 ? bx : bx + dh * 0.14, 0);
+          g.addColorStop(0, "#0a0b0f");
+          g.addColorStop(1, "#282c34");
+          ctx.fillStyle = g;
+          U.roundRect(ctx, bx, pyy + ph * fy, dh * 0.14, dh * 0.24, dh * 0.035);
+          ctx.fill();
+        }
+      }
 
       // Corner screws in the bezel.
       for (const [fx, fy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
@@ -147,6 +206,10 @@
       ctx.fillStyle = g;
       U.roundRect(ctx, pxx, pyy, pw, ph, dh * 0.06);
       ctx.fill();
+      ctx.strokeStyle = "rgba(20, 30, 18, 0.42)";
+      ctx.lineWidth = Math.max(1, dh * 0.020);
+      U.roundRect(ctx, pxx + dh * 0.02, pyy + dh * 0.02, pw - dh * 0.04, ph - dh * 0.04, dh * 0.055);
+      ctx.stroke();
       // Inner shadow along the top edge.
       g = ctx.createLinearGradient(0, pyy, 0, pyy + dh * 0.14);
       g.addColorStop(0, "rgba(0, 0, 0, 0.30)");
@@ -154,6 +217,10 @@
       ctx.fillStyle = g;
       U.roundRect(ctx, pxx, pyy, pw, ph, dh * 0.06);
       ctx.fill();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+      for (let y = pyy + dh * 0.12; y < pyy + ph - dh * 0.08; y += dh * 0.16) {
+        ctx.fillRect(pxx + dh * 0.08, y, pw - dh * 0.16, Math.max(1, dh * 0.006));
+      }
 
       const INK = "#1c241c";
       const GHOST = "rgba(28, 36, 28, 0.075)";

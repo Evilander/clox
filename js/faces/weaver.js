@@ -23,9 +23,9 @@
     const g = c.getContext("2d");
 
     let gr = g.createLinearGradient(0, 0, 0, H);
-    gr.addColorStop(0, "#05070f");
-    gr.addColorStop(0.55, "#0a0f1f");
-    gr.addColorStop(1, "#121a2c");
+    gr.addColorStop(0, "#070917");
+    gr.addColorStop(0.48, "#0c1429");
+    gr.addColorStop(1, "#17213a");
     g.fillStyle = gr;
     g.fillRect(0, 0, W, H);
 
@@ -39,7 +39,7 @@
 
     // Moon with the actual phase for today (synodic approximation),
     // composed on its own layer so the phase cut can't hole the sky.
-    const mx = W * 0.82, my = H * 0.15, mr = Math.min(W, H) * 0.058;
+    const mx = W * 0.80, my = H * 0.15, mr = Math.min(W, H) * 0.075;
     const days = (d.getTime() - 947182440000) / 86400000;   // new moon 2000-01-06
     const ph = (((days % 29.53058867) + 29.53058867) % 29.53058867) / 29.53058867;
     const lit = 0.5 - 0.5 * Math.cos(ph * U.TAU);           // illuminated fraction
@@ -82,6 +82,12 @@
     mg.fill();
     mg.restore();
     g.drawImage(mc, mx - mcx, my - mcx);
+    gr = g.createRadialGradient(mx, my, 0, mx, my, Math.min(W, H) * 0.55);
+    gr.addColorStop(0, "rgba(185, 205, 245, 0.12)");
+    gr.addColorStop(0.42, "rgba(130, 160, 215, 0.045)");
+    gr.addColorStop(1, "rgba(90, 120, 180, 0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, W, H);
 
     // Branch, upper-left — the web's high anchor.
     const limb = (x0, y0, x1, y1, w0, w1, leafN, seed) => {
@@ -117,6 +123,20 @@
     };
     limb(-W * 0.02, H * 0.045, W * 0.33, H * 0.16, H * 0.035, H * 0.012, 12, 11);
     limb(W * 1.02, H * 0.30, W * 0.84, H * 0.42, H * 0.028, H * 0.010, 9, 55);
+    for (let i = 0; i < 20; i++) {
+      const side = hash(i + 510) < 0.5 ? -1 : 1;
+      const lx = side < 0 ? hash(i + 520) * W * 0.16 : W - hash(i + 520) * W * 0.16;
+      const ly = H * (0.08 + hash(i + 530) * 0.78);
+      const lr = H * (0.014 + hash(i + 540) * 0.026);
+      g.save();
+      g.translate(lx, ly);
+      g.rotate((hash(i + 550) - 0.5) * 1.4);
+      g.fillStyle = `rgba(${10 + hash(i) * 12 | 0}, ${18 + hash(i + 2) * 20 | 0}, ${18 + hash(i + 4) * 18 | 0}, 0.70)`;
+      g.beginPath();
+      g.ellipse(0, 0, lr * 0.55, lr, 0, 0, U.TAU);
+      g.fill();
+      g.restore();
+    }
 
     // Fence rail at the bottom — the web's low anchor.
     g.fillStyle = "#0e0c0a";
@@ -142,7 +162,7 @@
   const segRadius = (R, L, k) => R * (0.32 + 0.13 * (L + k / 12));
 
   function buildWeb(W, H, hour) {
-    const cx = W * 0.50, cy = H * 0.47, R = Math.min(W, H) * 0.40;
+    const cx = W * 0.50, cy = H * 0.49, R = Math.min(W, H) * 0.44;
     const spokes = [];
     for (let i = 0; i < 12; i++) {
       const a = -Math.PI / 2 + (i / 12) * U.TAU + (hash(hour * 31 + i) - 0.5) * 0.05;
@@ -255,6 +275,18 @@
   CLOX.register({
     id: "weaver",
     name: "Weaver · Orb Spider",
+    leave() {
+      bg = { key: "", canvas: null };
+      web = null;
+      oldWeb = null;
+      dews.length = 0;
+      rings.length = 0;
+      laid = -1;
+      sp = { mode: "idle", seg: 0, t0: -1e9 };
+      gustT0 = -1e9;
+      lastSec = -1;
+      stepAcc = 0;
+    },
 
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
@@ -316,11 +348,12 @@
         ctx.restore();
       }
 
-      const SILK = (a) => `rgba(205, 220, 250, ${a})`;
+      const silkW = Math.max(1.2, Math.min(W, H) * 0.0015);
+      const SILK = (a) => `rgba(214, 228, 255, ${Math.min(0.92, a * 1.28)})`;
 
       // Old web tearing away in the gust.
       if (oldWeb) {
-        ctx.lineWidth = 1;
+        ctx.lineWidth = silkW * 0.80;
         oldWeb.segs.forEach((s, i) => {
           const dl = i * 14 + hash(i + 5) * 350;
           const age = gustAge - dl;
@@ -359,7 +392,7 @@
 
         // Guy lines out to the branches and fence.
         ctx.strokeStyle = SILK(0.30);
-        ctx.lineWidth = 1;
+        ctx.lineWidth = silkW * 0.82;
         for (const [a, b] of guys) {
           ctx.beginPath();
           ctx.moveTo(a[0], a[1]);
@@ -373,7 +406,7 @@
           const isNow = i === hourIdx;
           const pre = i === (hourIdx + 1) % 12 ? (t.m / 60) * 0.30 : 0;
           ctx.strokeStyle = SILK(0.34 + pre);
-          ctx.lineWidth = 1;
+          ctx.lineWidth = silkW * 0.78;
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.lineTo(s.ex, s.ey);
@@ -386,7 +419,7 @@
             gl.addColorStop(0, "rgba(235, 245, 255, 0.10)");
             gl.addColorStop(1, "rgba(235, 245, 255, 0.55)");
             ctx.strokeStyle = gl;
-            ctx.lineWidth = 1.4;
+            ctx.lineWidth = silkW * 1.55;
             ctx.beginPath();
             ctx.moveTo(cx, cy);
             ctx.lineTo(s.ex, s.ey);
@@ -397,7 +430,7 @@
 
         // Hub coil.
         ctx.strokeStyle = SILK(0.30);
-        ctx.lineWidth = 1;
+        ctx.lineWidth = silkW * 0.86;
         ctx.beginPath();
         for (let a = 0; a < U.TAU * 3; a += 0.25) {
           const rr = R * (0.05 + (a / (U.TAU * 3)) * 0.13);
@@ -408,7 +441,7 @@
         ctx.stroke();
 
         // The spiral — one segment per minute.
-        ctx.lineWidth = 1.1;
+        ctx.lineWidth = silkW;
         for (let i = 0; i < Math.min(laid, 60); i++) {
           const fresh = U.clamp(1 - (laid - i) / 8, 0, 1);
           ctx.strokeStyle = SILK(0.40 + fresh * 0.25);
@@ -422,7 +455,8 @@
           const s = segs[sp.seg];
           ctx.save();
           ctx.shadowColor = "rgba(220, 235, 255, 0.8)";
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = silkW * 4.2;
+          ctx.lineWidth = silkW * 1.25;
           ctx.strokeStyle = SILK(0.8);
           silkPath(ctx, s, p);
           ctx.stroke();
@@ -476,16 +510,17 @@
           const tw2 = 0.7 + 0.3 * Math.sin(now * 0.004 + dew.seg);
           ctx.save();
           ctx.shadowColor = "rgba(210, 230, 255, 0.9)";
-          ctx.shadowBlur = 7;
+          ctx.shadowBlur = silkW * 4.8;
           ctx.fillStyle = `rgba(235, 244, 255, ${alpha * tw2})`;
           ctx.beginPath();
-          ctx.arc(dxp, dyp, 2.1, 0, U.TAU);
+          const dewR = Math.max(2.1, R * 0.006);
+          ctx.arc(dxp, dyp, dewR, 0, U.TAU);
           ctx.fill();
           ctx.strokeStyle = `rgba(235, 244, 255, ${alpha * tw2 * 0.5})`;
-          ctx.lineWidth = 0.8;
+          ctx.lineWidth = Math.max(0.8, silkW * 0.55);
           ctx.beginPath();
-          ctx.moveTo(dxp - 5, dyp); ctx.lineTo(dxp + 5, dyp);
-          ctx.moveTo(dxp, dyp - 5); ctx.lineTo(dxp, dyp + 5);
+          ctx.moveTo(dxp - dewR * 2.4, dyp); ctx.lineTo(dxp + dewR * 2.4, dyp);
+          ctx.moveTo(dxp, dyp - dewR * 2.4); ctx.lineTo(dxp, dyp + dewR * 2.4);
           ctx.stroke();
           ctx.restore();
         }
@@ -517,6 +552,31 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(cap, W / 2, H * 0.955);
+
+      // Moonlit decode plate for TV-distance readability.
+      const exactTime = `${hs}:${U.pad2(t.m)}` +
+        (settings.seconds ? `:${U.pad2(t.s)}` : "") +
+        (settings.h24 ? "" : (t.pm ? " PM" : " AM"));
+      const plateW = Math.min(W * 0.36, Math.min(W, H) * 0.58);
+      const plateH = Math.max(38, Math.min(W, H) * 0.060);
+      const plateX = W / 2 - plateW / 2, plateY = H * 0.90;
+      const pg = ctx.createLinearGradient(0, plateY, 0, plateY + plateH);
+      pg.addColorStop(0, "rgba(42, 56, 76, 0.72)");
+      pg.addColorStop(1, "rgba(8, 12, 20, 0.76)");
+      ctx.fillStyle = pg;
+      U.roundRect(ctx, plateX, plateY, plateW, plateH, plateH * 0.22);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(206, 224, 255, 0.22)";
+      ctx.lineWidth = Math.max(1, plateH * 0.035);
+      ctx.stroke();
+      ctx.font = `600 ${plateH * 0.48}px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(238, 244, 255, 0.92)";
+      ctx.fillText(exactTime, W / 2, plateY + plateH * 0.54);
+      ctx.font = `500 ${plateH * 0.18}px "Segoe UI", sans-serif`;
+      ctx.fillStyle = "rgba(206, 224, 255, 0.44)";
+      ctx.fillText("SILK MINUTES / MOON PHASE", W / 2, plateY - plateH * 0.22);
 
       // Vignette.
       let g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.max(W, H) * 0.78);

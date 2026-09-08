@@ -12,6 +12,19 @@
 
   function subdial(ctx, cx, cy, r, ticks, labels) {
     ctx.save();
+    let g = ctx.createRadialGradient(cx - r * 0.24, cy - r * 0.28, 0, cx, cy, r);
+    g.addColorStop(0, "#fff9e8");
+    g.addColorStop(0.72, "#eee6d1");
+    g.addColorStop(1, "#cfc5aa");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, U.TAU);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(150, 122, 65, 0.22)";
+    ctx.lineWidth = r * 0.075;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.91, 0, U.TAU);
+    ctx.stroke();
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, U.TAU);
     ctx.strokeStyle = "#3a352b";
@@ -90,6 +103,28 @@
     U.roundRect(oc, 0, 0, cw, chh, rad);
     oc.fill();
 
+    // Carved crown and plinth keep the case from reading as a flat rectangle.
+    g = oc.createLinearGradient(0, 0, 0, cw * 0.24);
+    g.addColorStop(0, "#5b391d");
+    g.addColorStop(0.55, "#2b190b");
+    g.addColorStop(1, "#160c05");
+    oc.fillStyle = g;
+    oc.beginPath();
+    oc.moveTo(cw * 0.18, cw * 0.15);
+    oc.quadraticCurveTo(cw * 0.50, -cw * 0.02, cw * 0.82, cw * 0.15);
+    oc.lineTo(cw * 0.76, cw * 0.24);
+    oc.quadraticCurveTo(cw * 0.50, cw * 0.13, cw * 0.24, cw * 0.24);
+    oc.closePath();
+    oc.fill();
+    oc.fillStyle = "rgba(255, 205, 135, 0.12)";
+    oc.fillRect(cw * 0.20, cw * 0.18, cw * 0.60, Math.max(1, cw * 0.008));
+    g = oc.createLinearGradient(0, chh - cw * 0.16, 0, chh);
+    g.addColorStop(0, "#4d2f16");
+    g.addColorStop(1, "#190c04");
+    oc.fillStyle = g;
+    U.roundRect(oc, cw * 0.12, chh - cw * 0.145, cw * 0.76, cw * 0.105, cw * 0.026);
+    oc.fill();
+
     // Wood grain: wavering vertical streaks, later occluded by the door
     // opening so they only read on the case stiles.
     oc.save();
@@ -133,6 +168,33 @@
     U.roundRect(oc, inX + b2, inY + b2, inW - b2 * 2, inH - b2 * 2, Math.max(0, rad * 0.6 - b2));
     oc.stroke();
 
+    // Chains and side weights, visible through the glass behind the dial.
+    const weightTop = inY + inH * 0.51, weightH = cw * 0.33, weightW = cw * 0.042;
+    for (const side of [-1, 1]) {
+      const wx = cw / 2 + side * inW * 0.31;
+      oc.strokeStyle = "rgba(210, 170, 88, 0.30)";
+      oc.lineWidth = Math.max(1, cw * 0.004);
+      oc.beginPath();
+      oc.moveTo(wx, inY + cw * 0.11);
+      oc.lineTo(wx, weightTop + weightH * 0.08);
+      oc.stroke();
+      for (let j = 0; j < 8; j++) {
+        oc.beginPath();
+        oc.ellipse(wx, inY + cw * 0.14 + j * cw * 0.039, cw * 0.006, cw * 0.014, j % 2 ? 0.7 : -0.7, 0, U.TAU);
+        oc.stroke();
+      }
+      const wg = oc.createLinearGradient(wx - weightW, 0, wx + weightW, 0);
+      wg.addColorStop(0, "#72531d");
+      wg.addColorStop(0.48, "#d2ad5d");
+      wg.addColorStop(0.72, "#8d6826");
+      wg.addColorStop(1, "#4b3511");
+      oc.fillStyle = wg;
+      U.roundRect(oc, wx - weightW / 2, weightTop, weightW, weightH, weightW * 0.45);
+      oc.fill();
+      oc.fillStyle = "rgba(255, 235, 170, 0.20)";
+      oc.fillRect(wx - weightW * 0.22, weightTop + weightH * 0.08, weightW * 0.12, weightH * 0.78);
+    }
+
     // Brass hinges on the door's right edge.
     const hw = cw * 0.025, hh = cw * 0.07;
     for (const f of [0.25, 0.75]) {
@@ -175,6 +237,9 @@
   CLOX.register({
     id: "regulator",
     name: "Regulator · Pendulum",
+    leave() {
+      caseCache = { key: "", canvas: null };
+    },
 
     draw(ctx, W, H, d, settings) {
       const t = U.timeParts(d, true);
@@ -186,12 +251,41 @@
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
+      const room = Math.min(W, H);
+      ctx.fillStyle = "rgba(255, 225, 180, 0.025)";
+      for (let x = W * 0.12; x < W; x += W * 0.19) {
+        ctx.fillRect(x, H * 0.03, Math.max(1, room * 0.0014), H * 0.86);
+      }
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      ctx.fillRect(0, H * 0.82, W, H * 0.18);
+      ctx.strokeStyle = "rgba(255, 220, 170, 0.055)";
+      ctx.lineWidth = Math.max(1, room * 0.002);
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.82);
+      ctx.lineTo(W, H * 0.82);
+      ctx.stroke();
+      g = ctx.createRadialGradient(W * 0.50, H * 0.06, 0, W * 0.50, H * 0.16, room * 0.62);
+      g.addColorStop(0, "rgba(255, 213, 145, 0.14)");
+      g.addColorStop(1, "rgba(255, 213, 145, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+
       // Case.
-      const cw = Math.min(W * 0.34, H * 0.50);
+      const cw = Math.min(W * 0.42, H * 0.58);
       const chh = Math.min(H * 0.92, cw * 2.1);
       const cx = W / 2;
       const cyTop = (H - chh) / 2;
       const rad = cw * 0.10;
+
+      ctx.save();
+      g = ctx.createRadialGradient(cx, cyTop + chh * 0.57, cw * 0.24, cx, cyTop + chh * 0.62, cw * 0.76);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.40)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx + cw * 0.06, cyTop + chh * 0.58, cw * 0.82, chh * 0.52, 0.03, 0, U.TAU);
+      ctx.fill();
+      ctx.restore();
 
       const caseImg = buildCase(cw, chh);
       ctx.save();
@@ -251,6 +345,19 @@
       ctx.arc(cx, dialY, RD, 0, U.TAU);
       ctx.fillStyle = g;
       ctx.fill();
+      g = ctx.createRadialGradient(cx - RD * 0.30, dialY - RD * 0.34, 0, cx, dialY, RD * 1.02);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+      g.addColorStop(0.55, "rgba(255, 255, 255, 0.03)");
+      g.addColorStop(1, "rgba(85, 65, 30, 0.16)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, dialY, RD * 0.985, 0, U.TAU);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, dialY, RD * 0.92, 0, U.TAU);
+      ctx.strokeStyle = "rgba(170, 140, 76, 0.28)";
+      ctx.lineWidth = RD * 0.035;
+      ctx.stroke();
       ctx.strokeStyle = "#3a352b";
       ctx.lineWidth = RD * 0.02;
       ctx.stroke();

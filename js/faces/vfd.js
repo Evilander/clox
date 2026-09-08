@@ -7,11 +7,19 @@
 (() => {
   // Panel background + dot matrix are static per size — cache them.
   let panelCache = { key: "", canvas: null };
+  function releasePanelCache() {
+    if (panelCache.canvas) {
+      panelCache.canvas.width = 0;
+      panelCache.canvas.height = 0;
+    }
+    panelCache = { key: "", canvas: null };
+  }
 
   function panel(pw, ph, dh) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(pw)}x${Math.round(ph)}@${dpr}`;
     if (panelCache.key === key) return panelCache.canvas;
+    releasePanelCache();
     const c = document.createElement("canvas");
     c.width = Math.max(2, Math.round(pw * dpr));
     c.height = Math.max(2, Math.round(ph * dpr));
@@ -65,6 +73,10 @@
     id: "vfd",
     name: "VFD · Hi-Fi",
 
+    leave() {
+      releasePanelCache();
+    },
+
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
 
@@ -96,6 +108,59 @@
       const padX = dh * 0.5, padY = dh * 0.42;
       const px = x0 - padX, py = y0 - padY;
       const pw = layout.total + padX * 2, ph = dh + padY * 2;
+      const chassisPadX = dh * 0.42;
+      const chassisPadY = dh * 0.30;
+      const cx0 = px - chassisPadX;
+      const cy0 = py - chassisPadY;
+      const cw = pw + chassisPadX * 2;
+      const ch = ph + chassisPadY * 2;
+
+      // Hi-fi receiver chassis around the glass module.
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.72)";
+      ctx.shadowBlur = dh * 0.22;
+      ctx.shadowOffsetY = dh * 0.06;
+      g = ctx.createLinearGradient(0, cy0, 0, cy0 + ch);
+      g.addColorStop(0, "#171d21");
+      g.addColorStop(0.12, "#222a2f");
+      g.addColorStop(0.52, "#101519");
+      g.addColorStop(1, "#06090b");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, cx0, cy0, cw, ch, dh * 0.11);
+      ctx.fill();
+      ctx.restore();
+      g = ctx.createLinearGradient(cx0, 0, cx0 + cw, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.45)");
+      g.addColorStop(0.14, "rgba(255, 255, 255, 0.055)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.010)");
+      g.addColorStop(0.86, "rgba(255, 255, 255, 0.035)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, cx0, cy0, cw, ch, dh * 0.11);
+      ctx.fill();
+      const rackY = cy0 + ch - dh * 0.16;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      for (let i = 0; i < 18; i++) {
+        const vx = cx0 + cw * 0.18 + (cw * 0.64 / 17) * i;
+        U.roundRect(ctx, vx, rackY, dh * 0.020, dh * 0.07, dh * 0.008);
+        ctx.fill();
+      }
+      for (const [fx, fy] of [[0.035, 0.12], [0.965, 0.12], [0.035, 0.88], [0.965, 0.88]]) {
+        const bx = cx0 + cw * fx, by = cy0 + ch * fy;
+        g = ctx.createRadialGradient(bx - dh * 0.015, by - dh * 0.015, 0, bx, by, dh * 0.055);
+        g.addColorStop(0, "#4b555a");
+        g.addColorStop(1, "#070a0c");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(bx, by, dh * 0.048, 0, U.TAU);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
+        ctx.lineWidth = Math.max(1, dh * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(bx - dh * 0.030, by + dh * 0.012);
+        ctx.lineTo(bx + dh * 0.030, by - dh * 0.012);
+        ctx.stroke();
+      }
       ctx.drawImage(panel(pw, ph, dh), px, py, pw, ph);
 
       ctx.save();
@@ -190,6 +255,19 @@
         ctx.fillText(t.pm ? "PM" : "AM", px + pw - padX * 0.5, rowY2);
       }
       ctx.shadowBlur = 0;
+      // Beveled smoked glass reflections over the active phosphor.
+      g = ctx.createLinearGradient(px + pw * 0.05, py, px + pw * 0.62, py + ph);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+      g.addColorStop(0.18, "rgba(255, 255, 255, 0.025)");
+      g.addColorStop(0.34, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.08)");
+      ctx.fillStyle = g;
+      ctx.fillRect(px, py, pw, ph);
+      g = ctx.createRadialGradient(px + pw * 0.5, py + ph * 0.5, ph * 0.25, px + pw * 0.5, py + ph * 0.5, pw * 0.55);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.30)");
+      ctx.fillStyle = g;
+      ctx.fillRect(px, py, pw, ph);
       ctx.restore();
 
       // Vignette.

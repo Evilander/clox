@@ -103,8 +103,25 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const bitmapW = Math.max(2, Math.round(w * scale * dpr));
     const bitmapH = Math.max(2, Math.round(h * scale * dpr));
+    g.save();
+    U.roundRect(g, x, y, w, h, 8);
+    g.clip();
     g.drawImage(shadedMap(bitmapW, bitmapH, state.date, preview), x, y, w, h);
-    g.strokeStyle = "#81908466"; g.lineWidth = 1; g.strokeRect(x, y, w, h);
+    const atlasGlow = g.createRadialGradient(x + w * 0.34, y + h * 0.32, 0, x + w * 0.34, y + h * 0.32, w * 0.58);
+    atlasGlow.addColorStop(0, "#f0d9a018");
+    atlasGlow.addColorStop(1, "#f0d9a000");
+    g.fillStyle = atlasGlow;
+    g.fillRect(x, y, w, h);
+    const glass = g.createLinearGradient(x, y, x + w, y + h);
+    glass.addColorStop(0.08, "#ffffff00");
+    glass.addColorStop(0.26, "#ffffff16");
+    glass.addColorStop(0.36, "#ffffff02");
+    glass.addColorStop(0.82, "#ffffff0e");
+    g.fillStyle = glass;
+    g.fillRect(x, y, w, h);
+    g.restore();
+    g.strokeStyle = "#d8c18b66"; g.lineWidth = 2; U.roundRect(g, x, y, w, h, 8); g.stroke();
+    g.strokeStyle = "#0a151bcc"; g.lineWidth = 1; U.roundRect(g, x + 4, y + 4, w - 8, h - 8, 5); g.stroke();
     for (let lon = -180; lon <= 180; lon += 30) {
       const xx = x + (lon + 180) / 360 * w;
       line(g, xx, y - 5, xx, y, "#94a39a88");
@@ -140,13 +157,25 @@
       boxes.push(box);
       line(g, px, py, U.clamp(px, box.x, box.x + box.w), U.clamp(py, box.y, box.y + box.h), COLORS[i], 1);
       dot(g, px, py, 5, INK); dot(g, px, py, 2.6, COLORS[i]);
-      g.fillStyle = "#101f27e8"; g.fillRect(box.x, box.y, box.w, box.h);
+      g.fillStyle = "#101f27e8"; U.roundRect(g, box.x, box.y, box.w, box.h, 4); g.fill();
+      g.strokeStyle = "#d8c18b30"; g.lineWidth = 1; U.roundRect(g, box.x, box.y, box.w, box.h, 4); g.stroke();
       text(g, value, box.x + 8, box.y + 16, 12, COLORS[i]);
     });
   }
 
   function cityReadout(g, city, p, i, x, y, width, ref, solar, settings, compact, portrait) {
-    const clockSize = portrait ? 39 : compact ? 40 : 63;
+    const panelH = portrait ? 90 : compact ? 78 : 108;
+    const panelG = g.createLinearGradient(x, y - 26, x + width, y + panelH);
+    panelG.addColorStop(0, "#14293299");
+    panelG.addColorStop(1, "#07151c66");
+    g.fillStyle = panelG;
+    U.roundRect(g, x - 13, y - 27, width + 26, panelH, 6);
+    g.fill();
+    g.strokeStyle = "#d8c18b26";
+    g.lineWidth = 1;
+    U.roundRect(g, x - 13, y - 27, width + 26, panelH, 6);
+    g.stroke();
+    const clockSize = portrait ? 42 : compact ? 44 : 69;
     dot(g, x + 4, y - 5, 3, COLORS[i]);
     text(g, city.name, x + 17, y, portrait || compact ? 17 : 20, PAPER);
     if (!portrait) text(g, T.light(city.lat, city.lon, solar).toUpperCase(), x + width, y - 1, 10, COLORS[i], MONO, "right");
@@ -225,7 +254,14 @@
 
   CLOX.register({
     id: "meridian", name: "Meridian · World Time", controls: M.controls,
-    enter: M.enter, leave: M.leave, busy: M.busy,
+    enter: M.enter,
+    leave() {
+      maps.clear();
+      timelines.clear();
+      instantCache = { key: "" };
+      M.leave();
+    },
+    busy: M.busy,
     draw(g, W, H, now, settings) {
       const portrait = W / H < 1.05, compact = !portrait && W / H > 2;
       const vw = portrait ? 440 : 1440, vh = portrait ? 900 : compact ? 720 : 960;
@@ -238,8 +274,21 @@
       g.globalAlpha = 1; g.shadowBlur = 0; g.globalCompositeOperation = "source-over";
       g.fillStyle = INK; g.fillRect(0, 0, W, H);
       const glow = g.createRadialGradient(W * 0.35, H * 0.38, 0, W * 0.35, H * 0.38, W * 0.75);
-      glow.addColorStop(0, "#26393870"); glow.addColorStop(1, "#07151d00");
+      glow.addColorStop(0, "#3147428a"); glow.addColorStop(1, "#07151d00");
       g.fillStyle = glow; g.fillRect(0, 0, W, H);
+      const grain = Math.max(42, Math.min(W, H) * 0.055);
+      g.strokeStyle = "#d6c18d10";
+      g.lineWidth = 1;
+      g.beginPath();
+      for (let x = (W * 0.5) % grain; x < W; x += grain) { g.moveTo(x, 0); g.lineTo(x, H); }
+      for (let y = (H * 0.5) % grain; y < H; y += grain) { g.moveTo(0, y); g.lineTo(W, y); }
+      g.stroke();
+      g.strokeStyle = "#c8ad7744";
+      g.lineWidth = Math.max(1, Math.min(W, H) * 0.002);
+      g.beginPath();
+      g.moveTo(W * 0.04, H * 0.91);
+      g.lineTo(W * 0.96, H * 0.91);
+      g.stroke();
       g.translate(ox, oy); g.scale(scale, scale);
       const margin = portrait ? 28 : 64;
       text(g, "C L O X   /   A T L A S", margin, portrait ? 32 : 44, 10, BRASS, MONO);

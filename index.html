@@ -11,6 +11,7 @@
 <script defer src="js/meeting-time.js"></script>
 <script defer src="js/world-land.js"></script>
 <script defer src="js/engine.js"></script>
+<script defer src="js/moon-texture.js"></script>
 <script defer src="js/faces/redline.js"></script>
 <script defer src="js/faces/flip.js"></script>
 <script defer src="js/faces/sweep.js"></script>
@@ -21,11 +22,9 @@
 <script defer src="js/faces/terminal.js"></script>
 <script defer src="js/faces/braun.js"></script>
 <script defer src="js/faces/lcd.js"></script>
-<script defer src="js/faces/berlin.js"></script>
 <script defer src="js/faces/regulator.js"></script>
 <script defer src="js/faces/nelson.js"></script>
 <script defer src="js/faces/polar.js"></script>
-<script defer src="js/faces/ocarina.js"></script>
 <script defer src="js/faces/sundial.js"></script>
 <script defer src="js/faces/liquid.js"></script>
 <script defer src="js/faces/tifo.js"></script>
@@ -33,9 +32,13 @@
 <script defer src="js/faces/hourglass.js"></script>
 <script defer src="js/faces/tetris.js"></script>
 <script defer src="js/faces/scope.js"></script>
+<script defer src="js/faces/nocturne.js"></script>
+<script defer src="js/faces/dvd.js"></script>
+<script defer src="js/faces/airwave.js"></script>
 <script defer src="js/meridian-controls.js"></script>
 <script defer src="js/meeting-planner.js"></script>
 <script defer src="js/faces/meridian.js"></script>
+<script defer src="js/tv.js"></script>
 </head>
 <body>
 <canvas id="clock" role="img" tabindex="-1" aria-label="Clox clock. Press M for world time, G for the face gallery, or question mark for controls."></canvas>
@@ -45,6 +48,32 @@
   <button type="button" id="gallery-close">Back to clock</button>
 </dialog>
 <div id="toast" class="hidden" role="status"></div>
+<dialog id="tv-menu" aria-labelledby="tv-menu-title">
+  <p class="tv-eyebrow">CLOX</p>
+  <h1 id="tv-menu-title">Make yourself at home.</h1>
+  <p class="tv-description">Your clocks. Your pace.</p>
+  <div id="tv-settings">
+    <button type="button" data-tv-action="faces"><span>Clock collection</span><strong>Browse</strong></button>
+    <button type="button" data-tv-action="cycle"><span>Change clocks automatically</span><strong></strong></button>
+    <button type="button" data-tv-action="interval"><span>Time with each clock</span><strong></strong></button>
+    <button type="button" data-tv-action="h24"><span>Time format</span><strong></strong></button>
+    <button type="button" data-tv-action="seconds"><span>Seconds</span><strong></strong></button>
+    <button type="button" data-tv-action="dim"><span>Evening brightness</span><strong></strong></button>
+    <button type="button" data-tv-action="color"><span>Liquid palette</span><strong>Change</strong></button>
+    <button type="button" data-tv-action="cities"><span>World clock cities</span><strong>Choose</strong></button>
+    <button type="button" data-tv-action="close"><span>Back to clock</span><strong>Done</strong></button>
+  </div>
+  <p class="tv-footnote">The display stays awake while your clock is open.</p>
+  <p id="tv-resolution" class="tv-resolution"></p>
+</dialog>
+<dialog id="tv-cities" aria-labelledby="tv-cities-title">
+  <p class="tv-eyebrow">MERIDIAN / PLACES</p>
+  <h1 id="tv-cities-title">Your four corners of the world.</h1>
+  <p class="tv-description">Up / down selects a place. Left / right changes the city.</p>
+  <div id="tv-city-choices"></div>
+  <button type="button" id="tv-cities-done">Save cities</button>
+  <p class="tv-footnote">Back cancels your changes.</p>
+</dialog>
 <div id="hint" class="hidden">
   <span class="k">&larr;/&rarr;</span> face &nbsp;·&nbsp;
   <span class="k">G</span> gallery &nbsp;·&nbsp;

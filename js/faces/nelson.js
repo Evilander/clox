@@ -13,18 +13,43 @@
     id: "nelson",
     name: "Nelson · Ball Clock",
 
-    draw(ctx, W, H, d) {
-      const t = U.timeParts(d, true);
+    draw(ctx, W, H, d, settings) {
+      const t = U.timeParts(d, settings?.h24);
       const cx = W / 2, cy = H / 2;
-      const R = Math.min(W, H) * 0.36;
-      const br = R * 0.088; // ball radius, shared by spokes/ferrules/shadows/balls
+      const R = Math.min(W * 0.43, H * 0.43);
+      const br = R * 0.092; // ball radius, shared by spokes/ferrules/shadows/balls
 
-      // Warm plaster wall with a soft spot.
-      let g = ctx.createRadialGradient(cx, cy - H * 0.1, 0, cx, cy, Math.max(W, H) * 0.8);
-      g.addColorStop(0, "#3a332b");
-      g.addColorStop(1, "#191512");
+      // Mid-century wall: walnut slats plus a warmer plaster wash.
+      let g = ctx.createRadialGradient(cx, cy - H * 0.16, 0, cx, cy, Math.max(W, H) * 0.86);
+      g.addColorStop(0, "#514439");
+      g.addColorStop(0.55, "#2f2822");
+      g.addColorStop(1, "#16120f");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      const slatW = Math.max(20, Math.min(W, H) * 0.042);
+      for (let x = -slatW; x < W + slatW; x += slatW) {
+        const k = Math.floor(x / slatW);
+        const warm = k % 3 === 0;
+        const sg = ctx.createLinearGradient(x, 0, x + slatW, 0);
+        sg.addColorStop(0, warm ? "rgba(102, 66, 36, 0.15)" : "rgba(255, 220, 170, 0.025)");
+        sg.addColorStop(0.75, "rgba(0, 0, 0, 0.10)");
+        sg.addColorStop(1, "rgba(255, 240, 210, 0.025)");
+        ctx.fillStyle = sg;
+        ctx.fillRect(x, 0, slatW * 0.92, H);
+      }
+      ctx.fillStyle = "#15100c";
+      ctx.fillRect(0, H * 0.82, W, H * 0.18);
+      g = ctx.createLinearGradient(0, H * 0.80, 0, H);
+      g.addColorStop(0, "rgba(150, 98, 48, 0.18)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.28)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.77, W, H * 0.23);
+      ctx.strokeStyle = "rgba(230, 190, 130, 0.12)";
+      ctx.lineWidth = Math.max(1, Math.min(W, H) * 0.002);
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.82);
+      ctx.lineTo(W, H * 0.82);
+      ctx.stroke();
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -43,6 +68,12 @@
         const x0 = Math.sin(a) * R * 0.10, y0 = -Math.cos(a) * R * 0.10;
         const x1 = Math.sin(a) * R * 0.90, y1 = -Math.cos(a) * R * 0.90;
         ctx.beginPath();
+        ctx.moveTo(x0 + R * 0.018, y0 + R * 0.026);
+        ctx.lineTo(x1 + R * 0.018, y1 + R * 0.026);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.22)";
+        ctx.lineWidth = R * 0.017;
+        ctx.stroke();
+        ctx.beginPath();
         ctx.moveTo(x0, y0);
         ctx.lineTo(x1, y1);
         const sg = ctx.createLinearGradient(x0, y0, x1, y1);
@@ -50,6 +81,24 @@
         sg.addColorStop(1, "#7d6a3f");
         ctx.strokeStyle = sg;
         ctx.lineWidth = R * 0.012;
+        ctx.stroke();
+      }
+
+      // Faint minute ring makes the design readable without adding numerals.
+      ctx.strokeStyle = "rgba(225, 200, 150, 0.10)";
+      ctx.lineWidth = Math.max(1, R * 0.003);
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.74, 0, U.TAU);
+      ctx.stroke();
+      for (let i = 0; i < 60; i++) {
+        const a = (i / 60) * U.TAU;
+        const major = i % 5 === 0;
+        const r0 = R * (major ? 0.705 : 0.724), r1 = R * 0.742;
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(a) * r0, -Math.cos(a) * r0);
+        ctx.lineTo(Math.sin(a) * r1, -Math.cos(a) * r1);
+        ctx.strokeStyle = major ? "rgba(230, 205, 150, 0.28)" : "rgba(230, 205, 150, 0.12)";
+        ctx.lineWidth = Math.max(1, R * (major ? 0.004 : 0.0022));
         ctx.stroke();
       }
 
@@ -146,14 +195,14 @@
         ctx.save();
         ctx.rotate((t.fm / 60) * U.TAU);
         ctx.fillStyle = "#22211f";
-        ctx.fillRect(-R * 0.010, -R * 0.62, R * 0.020, R * 0.62);
+        ctx.fillRect(-R * 0.012, -R * 0.66, R * 0.024, R * 0.66);
         ctx.beginPath();
-        ctx.ellipse(0, -R * 0.68, R * 0.030, R * 0.085, 0, 0, U.TAU);
+        ctx.ellipse(0, -R * 0.73, R * 0.036, R * 0.10, 0, 0, U.TAU);
         ctx.fill();
         // Lighter edge stroke along the leading (clockwise) side.
         ctx.beginPath();
         ctx.moveTo(R * 0.010, 0);
-        ctx.lineTo(R * 0.010, -R * 0.62);
+        ctx.lineTo(R * 0.010, -R * 0.66);
         ctx.strokeStyle = "rgba(255, 255, 255, 0.10)";
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -170,6 +219,29 @@
       ctx.fill();
 
       ctx.restore();
+
+      // Small room placard: enough exact time for TV viewing without
+      // turning the Nelson face into a digital clock.
+      const hs = settings?.h24 ? U.pad2(t.H) : String(t.h);
+      const label = `${hs}:${U.pad2(t.m)}${settings?.h24 ? "" : (t.pm ? " PM" : " AM")}`;
+      const py = H * 0.865, ph = Math.max(30, Math.min(W, H) * 0.052);
+      const pw = Math.max(Math.min(W, H) * 0.20, ph * 4.6);
+      g = ctx.createLinearGradient(0, py - ph / 2, 0, py + ph / 2);
+      g.addColorStop(0, "#d5b56d");
+      g.addColorStop(1, "#6a5023");
+      ctx.fillStyle = g;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+      ctx.shadowBlur = ph * 0.35;
+      U.roundRect(ctx, cx - pw / 2, py - ph / 2, pw, ph, ph * 0.18);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255, 238, 180, 0.28)";
+      ctx.stroke();
+      ctx.font = `600 ${ph * 0.42}px Georgia, serif`;
+      ctx.fillStyle = "#1e1810";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, cx, py + ph * 0.02);
     }
   });
 

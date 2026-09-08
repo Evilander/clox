@@ -102,10 +102,19 @@
   // slice loop below. Canvas/context are reused across frames (only the
   // transform is reset) to avoid per-frame allocation.
   let bufCache = { key: "", canvas: null, ctx: null, dpr: 1 };
+  function releaseBufCache() {
+    if (bufCache.canvas) {
+      bufCache.canvas.width = 0;
+      bufCache.canvas.height = 0;
+    }
+    bufCache = { key: "", canvas: null, ctx: null, dpr: 1 };
+  }
+
   function getBuf(w, h) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(w)}x${Math.round(h)}@${dpr}`;
     if (bufCache.key !== key) {
+      releaseBufCache();
       const c = document.createElement("canvas");
       c.width = Math.max(2, Math.round(w * dpr));
       c.height = Math.max(2, Math.round(h * dpr));
@@ -145,6 +154,10 @@
     id: "terminal",
     name: "Terminal · CRT",
 
+    leave() {
+      releaseBufCache();
+    },
+
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
       // Gallery previews refresh slowly — never let them restart the boot.
@@ -156,21 +169,91 @@
       const flick = 0.95 + 0.05 *
         (0.6 + 0.4 * Math.sin(now * 0.037) * Math.sin(now * 0.0093 + 2));
 
-      const buf = getBuf(W, H);
+      // Plastic CRT shell and inset curved screen.
+      let g = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.52, Math.max(W, H) * 0.78);
+      g.addColorStop(0, "#202523");
+      g.addColorStop(0.55, "#0b0f0d");
+      g.addColorStop(1, "#010201");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      const bodyW = Math.min(W * 0.92, H * 1.62);
+      const bodyH = Math.min(H * 0.86, bodyW * 0.66);
+      const bodyX = (W - bodyW) / 2;
+      const bodyY = (H - bodyH) / 2;
+      const bezel = bodyH * 0.075;
+      const screenX = bodyX + bodyW * 0.075;
+      const screenY = bodyY + bodyH * 0.115;
+      const screenW = bodyW * 0.85;
+      const screenH = bodyH * 0.70;
+      const standW = bodyW * 0.32;
+      const standH = bodyH * 0.14;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.70)";
+      ctx.shadowBlur = bodyH * 0.10;
+      ctx.shadowOffsetY = bodyH * 0.04;
+      g = ctx.createLinearGradient(0, bodyY, 0, bodyY + bodyH);
+      g.addColorStop(0, "#2d342f");
+      g.addColorStop(0.12, "#1a211e");
+      g.addColorStop(0.72, "#0b100e");
+      g.addColorStop(1, "#060806");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bodyX, bodyY, bodyW, bodyH, bezel);
+      ctx.fill();
+      ctx.restore();
+      g = ctx.createLinearGradient(bodyX, 0, bodyX + bodyW, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.42)");
+      g.addColorStop(0.14, "rgba(255, 255, 255, 0.045)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.006)");
+      g.addColorStop(0.86, "rgba(255, 255, 255, 0.030)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, bodyX, bodyY, bodyW, bodyH, bezel);
+      ctx.fill();
+      for (let i = 0; i < 18; i++) {
+        const vx = bodyX + bodyW * 0.14 + i * bodyW * 0.027;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        U.roundRect(ctx, vx, bodyY + bodyH * 0.84, bodyW * 0.012, bodyH * 0.055, bodyW * 0.003);
+        ctx.fill();
+      }
+      g = ctx.createLinearGradient(0, bodyY + bodyH, 0, bodyY + bodyH + standH);
+      g.addColorStop(0, "#0a0d0b");
+      g.addColorStop(1, "#030403");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, W / 2 - standW / 2, bodyY + bodyH * 0.94, standW, standH, standH * 0.20);
+      ctx.fill();
+      ctx.fillStyle = "rgba(78, 255, 135, 0.38)";
+      ctx.shadowColor = "#2bff7a";
+      ctx.shadowBlur = bezel * 0.25;
+      ctx.font = `700 ${bezel * 0.34}px Consolas, "Courier New", monospace`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("CLOX-220", bodyX + bodyW * 0.075, bodyY + bodyH * 0.055);
+      ctx.shadowBlur = 0;
+
+      g = ctx.createRadialGradient(screenX + screenW / 2, screenY + screenH / 2, screenH * 0.10,
+        screenX + screenW / 2, screenY + screenH / 2, screenH * 0.82);
+      g.addColorStop(0, "#061009");
+      g.addColorStop(1, "#010302");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, screenX, screenY, screenW, screenH, bezel * 0.42);
+      ctx.fill();
+
+      const buf = getBuf(screenW, screenH);
       const bctx = buf.ctx;
 
       bctx.fillStyle = "#020604";
-      bctx.fillRect(0, 0, W, H);
-      let g = bctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.62);
+      bctx.fillRect(0, 0, screenW, screenH);
+      g = bctx.createRadialGradient(screenW / 2, screenH / 2, 0, screenW / 2, screenH / 2, Math.max(screenW, screenH) * 0.62);
       g.addColorStop(0, `rgba(20, 90, 45, ${0.16 * flick})`);
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
       bctx.fillStyle = g;
-      bctx.fillRect(0, 0, W, H);
+      bctx.fillRect(0, 0, screenW, screenH);
 
       const P1 = `rgba(66, 255, 130, ${flick})`;
       const P1dim = `rgba(66, 255, 130, ${0.55 * flick})`;
-      const margin = Math.min(W, H) * 0.08;
-      const lineH = Math.max(18, Math.min(W, H) * 0.032);
+      const margin = Math.min(screenW, screenH) * 0.08;
+      const lineH = Math.max(18, Math.min(screenW, screenH) * 0.032);
       bctx.font = `${lineH * 0.72}px Consolas, "Courier New", monospace`;
       bctx.textAlign = "left";
       bctx.textBaseline = "top";
@@ -196,9 +279,9 @@
         const str = hs + ":" + U.pad2(t.m) + (settings.seconds ? ":" + U.pad2(t.s) : "");
         const ghosts = updateRetention(str, now);
         const cols = str.length * 6.4 - 1.4;
-        let px = Math.min((W * 0.84) / cols, (H * 0.30) / 7);
+        let px = Math.min((screenW * 0.84) / cols, (screenH * 0.32) / 7);
         const bw = cols * px;
-        const bx = (W - bw) / 2, by = H * 0.40;
+        const bx = (screenW - bw) / 2, by = screenH * 0.40;
 
         if (ghosts.length) {
           const offs = cellOffsets(str, px);
@@ -257,46 +340,63 @@
 
       // Scanlines.
       bctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-      const step = Math.max(3, Math.round(H / 320));
-      for (let sy = 0; sy < H; sy += step * 2) {
-        bctx.fillRect(0, sy, W, step);
+      const step = Math.max(3, Math.round(screenH / 320));
+      for (let sy = 0; sy < screenH; sy += step * 2) {
+        bctx.fillRect(0, sy, screenW, step);
       }
 
       // Slow vertical refresh band (8s period).
-      const bandY = ((now % 8000) / 8000) * (H * 1.3) - H * 0.15;
-      g = bctx.createLinearGradient(0, bandY - H * 0.06, 0, bandY + H * 0.06);
+      const bandY = ((now % 8000) / 8000) * (screenH * 1.3) - screenH * 0.15;
+      g = bctx.createLinearGradient(0, bandY - screenH * 0.06, 0, bandY + screenH * 0.06);
       g.addColorStop(0, "rgba(120, 255, 170, 0)");
       g.addColorStop(0.5, "rgba(120, 255, 170, 0.045)");
       g.addColorStop(1, "rgba(120, 255, 170, 0)");
       bctx.fillStyle = g;
-      bctx.fillRect(0, bandY - H * 0.06, W, H * 0.12);
+      bctx.fillRect(0, bandY - screenH * 0.06, screenW, screenH * 0.12);
 
       // Barrel-warp blit: the flat scene bulges outward like a curved tube.
+      ctx.save();
+      U.roundRect(ctx, screenX, screenY, screenW, screenH, bezel * 0.42);
+      ctx.clip();
       const SLICES = 28;
       for (let i = 0; i < SLICES; i++) {
         const ny = ((i + 0.5) / SLICES) * 2 - 1;
-        const sy = (i / SLICES) * H, sh = H / SLICES;
-        const xInset = W * 0.018 * ny * ny;
-        const destW = W - 2 * xInset;
+        const sy = (i / SLICES) * screenH, sh = screenH / SLICES;
+        const xInset = screenW * 0.018 * ny * ny;
+        const destW = screenW - 2 * xInset;
         const yWarp = 1 - 0.015 * ny * ny;
-        const dy = H / 2 + (sy - H / 2) * yWarp;
+        const dy = screenH / 2 + (sy - screenH / 2) * yWarp;
         const dh = sh * yWarp;
         ctx.drawImage(
           buf.canvas,
-          0, sy * buf.dpr, W * buf.dpr, sh * buf.dpr,
-          xInset, dy, destW, dh
+          0, sy * buf.dpr, screenW * buf.dpr, sh * buf.dpr,
+          screenX + xInset, screenY + dy, destW, dh
         );
       }
 
       // Curved-tube vignette.
-      g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.72);
+      g = ctx.createRadialGradient(screenX + screenW / 2, screenY + screenH / 2, Math.min(screenW, screenH) * 0.32,
+        screenX + screenW / 2, screenY + screenH / 2, Math.max(screenW, screenH) * 0.72);
       g.addColorStop(0, "rgba(0, 0, 0, 0)");
       g.addColorStop(1, "rgba(0, 0, 0, 0.62)");
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(screenX, screenY, screenW, screenH);
 
-      // Rounded tube-mask corners.
-      tubeCorners(ctx, W, H);
+      // Convex glass reflections on the CRT face.
+      g = ctx.createLinearGradient(screenX + screenW * 0.10, screenY, screenX + screenW * 0.78, screenY + screenH);
+      g.addColorStop(0, "rgba(185, 255, 210, 0.13)");
+      g.addColorStop(0.17, "rgba(185, 255, 210, 0.025)");
+      g.addColorStop(0.30, "rgba(185, 255, 210, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.10)");
+      ctx.fillStyle = g;
+      ctx.fillRect(screenX, screenY, screenW, screenH);
+      ctx.restore();
+
+      g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.82);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
     }
   });
 })();

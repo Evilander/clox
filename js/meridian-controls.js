@@ -67,7 +67,7 @@ CLOX.meridian = (() => {
   }
 
   function update() {
-    if (!active || controls.hidden) return;
+    if (!active || (controls.hidden && !currentSettings.tv)) return;
     const state = snapshot(new Date());
     slider.value = (state.date.getTime() - state.start) / 60000;
     const ref = T.at(state.date, state.cities[0].zone);
@@ -83,6 +83,14 @@ CLOX.meridian = (() => {
   }
 
   function live() { selected = null; update(); }
+
+  function setCities(value) {
+    ids = T.normalizeCities(value);
+    selected = null;
+    try { localStorage.setItem(KEY, JSON.stringify({ cities: ids })); }
+    catch { /* The choices still work for this session. */ }
+    update();
+  }
 
   slider.addEventListener("input", () => {
     if (selected === null) start = snapshot(new Date()).start;
@@ -147,7 +155,7 @@ CLOX.meridian = (() => {
   }
 
   return {
-    controls, snapshot, layout,
+    controls, snapshot, layout, setCities,
     get h24() { return currentSettings.h24; },
     explore(instant) { selected = instant; start = Math.floor(instant / T.HOUR) * T.HOUR - 6 * T.HOUR; update(); },
     busy() { return selected !== null || cityDialog.open || copyDialog.open || document.getElementById("meeting-dialog").open || controls.contains(document.activeElement); },

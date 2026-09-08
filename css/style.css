@@ -238,6 +238,59 @@ body:has(dialog[open]) button { cursor: pointer !important; }
 }
 #gallery-close { top: auto; bottom: 12px; }
 
+.tv { font-family: "Segoe UI", Roboto, sans-serif; }
+.tv #hint { font-size: 2.1vh; padding: 1.4vh 2.5vw; bottom: 6%; }
+.tv #toast { font-size: 2.3vh; padding: 1.3vh 2.2vw; }
+.tv #gallery-close { bottom: 3%; font-size: 2vh; min-height: 4vh; padding: 0.8vh 1.5vw; }
+.tv #gallery-buttons button:focus { outline: 0.3vh solid #ebd5a5; outline-offset: 0.3vh; }
+#tv-menu, #tv-cities {
+  box-sizing: border-box;
+  width: 70vw;
+  max-width: 1400px;
+  max-height: 88vh;
+  padding: 4vh 4vw 3vh;
+  border: 1px solid #555449;
+  border-radius: 1.4vh;
+  color: #e8decb;
+  background: #101a20;
+  box-shadow: 0 3vh 12vh #000a;
+  font: 2.25vh/1.4 "Segoe UI", Roboto, sans-serif;
+}
+#tv-menu::backdrop, #tv-cities::backdrop { background: #02070bde; }
+.tv-eyebrow { margin: 0 0 1vh; color: #c5ad81; font-size: 1.6vh; letter-spacing: 0.2em; }
+#tv-menu h1, #tv-cities h1 { font: 4.2vh/1.15 Georgia, serif; margin: 0; font-weight: 400; }
+.tv-description { color: #9facaf; margin: 1vh 0 2vh; }
+#tv-settings, #tv-city-choices { display: grid; gap: 0.65vh; }
+#tv-settings button, #tv-city-choices button, #tv-cities-done {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 2vw;
+  min-height: 4.9vh;
+  padding: 0.9vh 1.2vw;
+  color: #d3d6cf;
+  background: #19272d;
+  border: 1px solid transparent;
+  border-radius: 0.6vh;
+  font: inherit;
+  text-align: left;
+}
+#tv-settings strong { color: #cbb58e; font-weight: 400; }
+#tv-settings button:focus, #tv-city-choices button:focus, #tv-cities-done:focus {
+  outline: 0.28vh solid #e6cf9f;
+  outline-offset: 0.1vh;
+  color: #111c22;
+  background: #e6cf9f;
+}
+#tv-settings button:focus strong { color: #27383c; }
+.tv-footnote { margin: 2vh 0 0; color: #9aa6a6; font-size: 1.75vh; }
+.tv-resolution { margin: 0.5vh 0 0; color: #7c8a8e; font-size: 1.5vh; }
+#tv-cities { width: 74vw; }
+#tv-city-choices { margin: 3vh 0; gap: 1.5vh; }
+#tv-city-choices button { min-height: 7vh; }
+#tv-cities-done { width: auto; min-width: 14vw; }
+
 @media (max-height: 640px) {
   .meridian-dialog { padding: 20px 24px; }
   .meridian-dialog h1 { font-size: 27px; }

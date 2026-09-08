@@ -22,11 +22,21 @@
 
   function cardBg(ctx, x, y, w, h, r) {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, "#2a2a2e");
-    g.addColorStop(0.5, "#202024");
-    g.addColorStop(0.501, "#2b2b2f");
-    g.addColorStop(1, "#1a1a1e");
+    g.addColorStop(0, "#34343a");
+    g.addColorStop(0.08, "#29292f");
+    g.addColorStop(0.5, "#1b1b20");
+    g.addColorStop(0.501, "#303036");
+    g.addColorStop(0.92, "#18191e");
+    g.addColorStop(1, "#0f1014");
     ctx.fillStyle = g;
+    U.roundRect(ctx, x, y, w, h, r);
+    ctx.fill();
+    const vg = ctx.createLinearGradient(x, 0, x + w, 0);
+    vg.addColorStop(0, "rgba(255, 255, 255, 0.045)");
+    vg.addColorStop(0.16, "rgba(255, 255, 255, 0)");
+    vg.addColorStop(0.82, "rgba(0, 0, 0, 0)");
+    vg.addColorStop(1, "rgba(0, 0, 0, 0.22)");
+    ctx.fillStyle = vg;
     U.roundRect(ctx, x, y, w, h, r);
     ctx.fill();
   }
@@ -72,6 +82,19 @@
     const font = `700 ${h * 0.72}px "Helvetica Neue", "Arial Narrow", Arial, sans-serif`;
     const p = U.clamp((now - c.t0) / c.dur, 0, 1);
     const hinge = y + h / 2;
+
+    // Molded card thickness behind the flipping face.
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+    ctx.shadowBlur = h * 0.075;
+    ctx.shadowOffsetY = h * 0.03;
+    const sideGrad = ctx.createLinearGradient(0, y + h * 0.05, 0, y + h + h * 0.055);
+    sideGrad.addColorStop(0, "#15161b");
+    sideGrad.addColorStop(1, "#07080b");
+    ctx.fillStyle = sideGrad;
+    U.roundRect(ctx, x + w * 0.018, y + h * 0.035, w, h, r);
+    ctx.fill();
+    ctx.restore();
 
     // Drop shadow under the whole card.
     ctx.save();
@@ -137,6 +160,13 @@
     // Split line + axle pins.
     ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
     ctx.fillRect(x, hinge - Math.max(1, h * 0.006), w, Math.max(2, h * 0.012));
+    const shine = ctx.createLinearGradient(0, y, 0, y + h * 0.24);
+    shine.addColorStop(0, "rgba(255, 255, 255, 0.09)");
+    shine.addColorStop(0.45, "rgba(255, 255, 255, 0.018)");
+    shine.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = shine;
+    U.roundRect(ctx, x + w * 0.035, y + h * 0.035, w * 0.93, h * 0.20, r * 0.55);
+    ctx.fill();
     ctx.fillStyle = "#0c0c0e";
     const pw = w * 0.035, ph = h * 0.10;
     for (const px of [x - pw * 0.4, x + w - pw * 0.6]) {
@@ -208,8 +238,9 @@
       let gapSmall = dcw * 0.14;       // within a digit pair
       let gapMid = dcw * 0.55;         // between hour pair and minute pair
       let gapSec = ch * 0.12;          // before the seconds group
+      const secCardW = () => dcw * 0.92;
       const total = () => dcw * 4 + gapSmall * 2 + gapMid +
-        (settings.seconds ? gapSec + dcw * sScale : 0);
+        (settings.seconds ? gapSec + secCardW() : 0);
       const maxW = W * 0.88;
       if (total() > maxW) {
         const k = maxW / total();
@@ -227,6 +258,62 @@
       const xM1 = xH2 + dcw + gapMid;
       const xM2 = xM1 + dcw + gapSmall;
 
+      const panelPadX = ch * 0.22;
+      const panelPadTop = ch * 0.24;
+      const panelPadBottom = ch * 0.30;
+      const panelX = x0 - panelPadX;
+      const panelY = cy - panelPadTop;
+      const panelW = total() + panelPadX * 2;
+      const panelH = ch + panelPadTop + panelPadBottom;
+      const railH = ch * 0.075;
+
+      // The cards sit in a deep airport-departure module, with rails and
+      // hardware visible at TV distance.
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.68)";
+      ctx.shadowBlur = ch * 0.18;
+      ctx.shadowOffsetY = ch * 0.07;
+      g = ctx.createLinearGradient(0, panelY, 0, panelY + panelH);
+      g.addColorStop(0, "#202126");
+      g.addColorStop(0.18, "#14151a");
+      g.addColorStop(1, "#07080b");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, panelX, panelY, panelW, panelH, ch * 0.055);
+      ctx.fill();
+      ctx.restore();
+      g = ctx.createLinearGradient(panelX, 0, panelX + panelW, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.34)");
+      g.addColorStop(0.12, "rgba(255, 255, 255, 0.035)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.012)");
+      g.addColorStop(0.88, "rgba(255, 255, 255, 0.028)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.38)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, panelX, panelY, panelW, panelH, ch * 0.055);
+      ctx.fill();
+      for (const ry of [panelY + panelPadTop * 0.45, cy + ch + panelPadBottom * 0.40]) {
+        g = ctx.createLinearGradient(0, ry - railH / 2, 0, ry + railH / 2);
+        g.addColorStop(0, "#3a3a40");
+        g.addColorStop(0.45, "#191a1f");
+        g.addColorStop(1, "#08090c");
+        ctx.fillStyle = g;
+        U.roundRect(ctx, panelX + panelPadX * 0.25, ry - railH / 2, panelW - panelPadX * 0.5, railH, railH * 0.35);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fillRect(panelX + panelPadX * 0.35, ry - railH * 0.38, panelW - panelPadX * 0.7, Math.max(1, railH * 0.08));
+      }
+      for (let i = 0; i < 4; i++) {
+        const sx = panelX + panelPadX * 0.45 + i * (panelW - panelPadX * 0.9) / 3;
+        const sy = panelY + panelH - panelPadBottom * 0.22;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.beginPath();
+        ctx.arc(sx, sy, ch * 0.015, 0, U.TAU);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.09)";
+        ctx.beginPath();
+        ctx.arc(sx - ch * 0.004, sy - ch * 0.005, ch * 0.005, 0, U.TAU);
+        ctx.fill();
+      }
+
       // Cascade: each position left-to-right starts its flip 45ms later.
       const h1 = track("h1", hStr[0], now, 550, 0);
       const h2 = track("h2", hStr[1], now, 550, 45);
@@ -243,7 +330,7 @@
         // Seconds flap falls fast, like the real mechanism. Stays a single
         // two-digit module — authentic for a seconds unit.
         const sCard = track("s", U.pad2(t.s), now, 240);
-        const sh = ch * sScale, sw = dcw * sScale;
+        const sh = ch * sScale, sw = secCardW();
         const xSec = xM2 + dcw + gapSec;
         drawCard(ctx, xSec, cy + ch - sh, sw, sh, sCard, now, null, 4);
       }

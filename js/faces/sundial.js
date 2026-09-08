@@ -61,6 +61,27 @@
       g.fillStyle = `rgba(${mix(120, 40)}, ${mix(150, 60)}, ${mix(70, 55)}, 0.25)`;
       g.fillRect(gx, gy, 2, 5 + hash(i + 20) * 5);
     }
+    // Large surrounding flagstones make the sundial feel seated in a garden.
+    const slabW = Math.max(120, Math.min(W, H) * 0.18);
+    const slabH = slabW * 0.56;
+    g.lineWidth = Math.max(1, Math.min(W, H) * 0.002);
+    for (let row = 0; row < 4; row++) {
+      for (let col = -1; col <= Math.ceil(W / slabW) + 1; col++) {
+        const sx = col * slabW + (row % 2) * slabW * 0.5;
+        const sy = H * 0.64 + row * slabH * 0.62;
+        const shade = mix(112 + hash(row * 19 + col) * 18, 38 + hash(row * 19 + col) * 12);
+        g.fillStyle = `rgba(${shade}, ${shade - 6}, ${shade - 18}, ${U.lerp(0.20, 0.12, nf)})`;
+        g.beginPath();
+        g.moveTo(sx + slabW * 0.04, sy);
+        g.lineTo(sx + slabW * 0.96, sy + slabH * 0.04);
+        g.lineTo(sx + slabW * 0.90, sy + slabH * 0.58);
+        g.lineTo(sx + slabW * 0.02, sy + slabH * 0.52);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = `rgba(${mix(48, 18)}, ${mix(42, 18)}, ${mix(32, 24)}, 0.20)`;
+        g.stroke();
+      }
+    }
 
     const cx = W / 2, cy = H / 2;
     const R = Math.min(W, H) * 0.40;
@@ -77,6 +98,18 @@
     g.fillStyle = `rgb(${mix(112, 52)}, ${mix(106, 52)}, ${mix(94, 58)})`;
     g.fill();
     g.restore();
+    gr = g.createRadialGradient(-R * 0.24, -R * 0.34, 0, 0, 0, R * 1.12);
+    gr.addColorStop(0, `rgb(${mix(154, 76)}, ${mix(148, 76)}, ${mix(130, 84)})`);
+    gr.addColorStop(1, `rgb(${mix(80, 38)}, ${mix(76, 38)}, ${mix(66, 48)})`);
+    g.fillStyle = gr;
+    g.beginPath();
+    g.arc(0, 0, R * 1.05, 0, U.TAU);
+    g.fill();
+    g.strokeStyle = `rgba(${mix(42, 26)}, ${mix(38, 26)}, ${mix(30, 30)}, 0.45)`;
+    g.lineWidth = R * 0.028;
+    g.beginPath();
+    g.arc(0, 0, R * 1.045, 0, U.TAU);
+    g.stroke();
     gr = g.createRadialGradient(-R * 0.25, -R * 0.3, 0, 0, 0, R);
     gr.addColorStop(0, `rgb(${mix(196, 96)}, ${mix(188, 96)}, ${mix(166, 104)})`);
     gr.addColorStop(1, `rgb(${mix(150, 66)}, ${mix(142, 66)}, ${mix(122, 74)})`);
@@ -94,6 +127,19 @@
       g.arc(Math.cos(a) * rr, Math.sin(a) * rr, R * (0.015 + hash(i + 5) * 0.045), 0, U.TAU);
       g.fill();
     }
+    // Hairline cracks cut across the stone but stay behind the hands/shadow.
+    g.strokeStyle = `rgba(${mix(64, 30)}, ${mix(58, 30)}, ${mix(46, 34)}, 0.26)`;
+    g.lineWidth = Math.max(1, R * 0.003);
+    for (let i = 0; i < 8; i++) {
+      const a = hash(i + 120) * U.TAU;
+      const r0 = R * (0.25 + hash(i + 130) * 0.42);
+      const len = R * (0.12 + hash(i + 140) * 0.22);
+      g.beginPath();
+      g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+      g.quadraticCurveTo(Math.cos(a + 0.08) * (r0 + len * 0.45), Math.sin(a + 0.08) * (r0 + len * 0.45),
+        Math.cos(a - 0.06) * (r0 + len), Math.sin(a - 0.06) * (r0 + len));
+      g.stroke();
+    }
 
     // Engraved rings.
     const ink = `rgba(${mix(58, 30)}, ${mix(52, 30)}, ${mix(42, 34)}, 0.9)`;
@@ -104,6 +150,14 @@
       g.lineWidth = R * (rr === 0.97 ? 0.014 : 0.007);
       g.stroke();
     }
+    g.fillStyle = `rgba(${mix(72, 40)}, ${mix(66, 40)}, ${mix(52, 42)}, 0.62)`;
+    g.font = `700 ${R * 0.046}px Georgia, serif`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    [["N", 0], ["E", 0.25], ["S", 0.5], ["W", 0.75]].forEach(([lb, f]) => {
+      const a = f * U.TAU;
+      g.fillText(lb, Math.sin(a) * R * 0.46, -Math.cos(a) * R * 0.46);
+    });
 
     // Hour lines + numerals: VI (dawn) through XII (noon, up) to VI (dusk),
     // 15° per hour. Engraved look: dark line + light offset line.
@@ -151,6 +205,9 @@
   CLOX.register({
     id: "sundial",
     name: "Sundial · Garden Stone",
+    leave() {
+      plateCache = { key: "", canvas: null };
+    },
 
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, true);
@@ -218,9 +275,12 @@
       const sCol = day ? "40, 32, 20" : "20, 28, 60";
       ctx.save();
       ctx.rotate(shadowA);   // the shadow falls ON the current hour line
+      ctx.shadowColor = `rgba(${sCol}, ${sAlpha * 0.7})`;
+      ctx.shadowBlur = R * 0.035;
       g = ctx.createLinearGradient(0, 0, 0, -sLen);
-      g.addColorStop(0, `rgba(${sCol}, ${sAlpha})`);
-      g.addColorStop(1, `rgba(${sCol}, ${sAlpha * 0.35})`);
+      g.addColorStop(0, `rgba(${sCol}, ${sAlpha * 1.45})`);
+      g.addColorStop(0.64, `rgba(${sCol}, ${sAlpha * 0.82})`);
+      g.addColorStop(1, `rgba(${sCol}, ${sAlpha * 0.22})`);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(-R * 0.030, 0);
@@ -257,6 +317,35 @@
       ctx.fillStyle = g;
       ctx.fill();
 
+      ctx.restore();
+
+      // Engraved readout for real-world readability; the shadow remains the
+      // main clock, this only decodes it at TV distance.
+      const plateW = Math.min(W * 0.34, R * 0.95);
+      const plateH = Math.max(36, R * 0.12);
+      const plateX = cx - plateW / 2, plateY = H * 0.855;
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
+      ctx.shadowBlur = plateH * 0.35;
+      g = ctx.createLinearGradient(0, plateY, 0, plateY + plateH);
+      g.addColorStop(0, `rgba(${mix(184, 86)}, ${mix(174, 86)}, ${mix(145, 96)}, 0.78)`);
+      g.addColorStop(1, `rgba(${mix(116, 46)}, ${mix(108, 46)}, ${mix(86, 58)}, 0.82)`);
+      ctx.fillStyle = g;
+      U.roundRect(ctx, plateX, plateY, plateW, plateH, plateH * 0.18);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(${mix(48, 28)}, ${mix(42, 28)}, ${mix(32, 32)}, 0.55)`;
+      ctx.lineWidth = Math.max(1, plateH * 0.035);
+      ctx.stroke();
+      const hs = settings.h24 ? U.pad2(t.H) : String(t.h);
+      const readout = `${hs}:${U.pad2(t.m)}${settings.h24 ? "" : (t.pm ? " PM" : " AM")}`;
+      ctx.font = `600 ${plateH * 0.43}px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255, 246, 210, 0.28)";
+      ctx.fillText(readout, cx, plateY + plateH * 0.50 + 1);
+      ctx.fillStyle = `rgba(${mix(50, 28)}, ${mix(44, 28)}, ${mix(34, 34)}, 0.92)`;
+      ctx.fillText(readout, cx, plateY + plateH * 0.50);
       ctx.restore();
 
       // Night: fireflies drift over the garden (brightness and the dark

@@ -1,0 +1,70 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "io.github.evilander.clox"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "io.github.evilander.clox"
+        minSdk 21
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir layout.buildDirectory.dir("generated/cloxAssets")
+        }
+    }
+
+    dependenciesInfo {
+        includeInApk false
+        includeInBundle false
+    }
+
+    packaging {
+        resources {
+            excludes += [
+                "META-INF/com/android/build/gradle/app-metadata.properties",
+                "META-INF/version-control-info.textproto"
+            ]
+        }
+    }
+}
+
+tasks.register("syncCloxAssets", Sync) {
+    def repoRoot = layout.projectDirectory.dir("../..")
+    into layout.buildDirectory.dir("generated/cloxAssets")
+    from(repoRoot) {
+        include "index.html"
+    }
+    from(repoRoot.dir("css")) {
+        into "css"
+        include "**/*.css"
+    }
+    from(repoRoot.dir("js")) {
+        into "js"
+        include "**/*.js"
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn tasks.named("syncCloxAssets")
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}

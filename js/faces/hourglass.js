@@ -57,6 +57,31 @@
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      const tableY = H * 0.735;
+      g = ctx.createLinearGradient(0, tableY, 0, H);
+      g.addColorStop(0, "#2e1a0c");
+      g.addColorStop(0.32, "#1b0f07");
+      g.addColorStop(1, "#090504");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, tableY, W, H - tableY);
+      ctx.strokeStyle = "rgba(238, 184, 104, 0.13)";
+      ctx.lineWidth = Math.max(1, Math.min(W, H) * 0.002);
+      ctx.beginPath();
+      ctx.moveTo(0, tableY);
+      ctx.lineTo(W, tableY);
+      ctx.stroke();
+      for (let x = -W * 0.1; x < W * 1.1; x += W * 0.16) {
+        ctx.strokeStyle = "rgba(255, 205, 140, 0.035)";
+        ctx.beginPath();
+        ctx.moveTo(x, tableY + H * 0.02);
+        ctx.lineTo(x + W * 0.22, H);
+        ctx.stroke();
+      }
+      g = ctx.createRadialGradient(W * 0.78, H * 0.30, 0, W * 0.78, H * 0.30, Math.min(W, H) * 0.32);
+      g.addColorStop(0, "rgba(255, 177, 85, 0.16)");
+      g.addColorStop(1, "rgba(255, 177, 85, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
 
       // Dust motes drifting through the glow.
       for (let i = 0; i < 7; i++) {
@@ -66,11 +91,11 @@
         ctx.fillRect(mx, my, 2, 2);
       }
 
-      const cx = W / 2, cy = H / 2;
+      const cx = W / 2, cy = H * 0.47;
       const S = Math.min(W, H);
-      const bw = S * 0.34;                 // bulb width
-      const bh = S * 0.315;                // bulb height (per half)
-      const frameW = bw * 1.28;
+      const bw = S * 0.38;                 // bulb width
+      const bh = S * 0.325;                // bulb height (per half)
+      const frameW = bw * 1.33;
 
       // Flip during the first 0.9s of each minute; drain the other 59.1s.
       const FLIP = 0.9;
@@ -85,6 +110,13 @@
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(rot);
+      g = ctx.createRadialGradient(0, bh * 0.96, bw * 0.22, 0, bh * 1.02, bw * 0.86);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.36)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, bh * 1.12, frameW * 0.58, S * 0.070, 0, 0, U.TAU);
+      ctx.fill();
 
       // ---- Wooden end plates + brass posts (behind the glass) ----
       const plateH = S * 0.045, plateW = frameW * 1.12;
@@ -99,6 +131,14 @@
         ctx.fill();
         ctx.fillStyle = "rgba(255, 200, 130, 0.10)";
         ctx.fillRect(-plateW / 2 + plateH * 0.2, py - plateH / 2, plateW - plateH * 0.4, Math.max(1, plateH * 0.06));
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.lineWidth = Math.max(1, plateH * 0.05);
+        for (let k = 1; k < 5; k++) {
+          ctx.beginPath();
+          ctx.moveTo(-plateW / 2 + (k / 5) * plateW, py - plateH * 0.38);
+          ctx.lineTo(-plateW / 2 + (k / 5) * plateW + Math.sin(k) * plateH * 0.22, py + plateH * 0.38);
+          ctx.stroke();
+        }
       }
       for (const sx of [-1, 1]) {
         const px = sx * frameW * 0.52;
@@ -223,6 +263,21 @@
         ctx.stroke();
         ctx.restore();
       }
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (const sx of [-1, 1]) {
+        const gg = ctx.createLinearGradient(sx * bw * 0.18, -bh, sx * bw * 0.46, bh);
+        gg.addColorStop(0, "rgba(255, 255, 255, 0)");
+        gg.addColorStop(0.45, "rgba(255, 255, 255, 0.085)");
+        gg.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.strokeStyle = gg;
+        ctx.lineWidth = Math.max(2, S * 0.006);
+        ctx.beginPath();
+        ctx.moveTo(sx * bw * 0.28, -bh * 0.82);
+        ctx.bezierCurveTo(sx * bw * 0.43, -bh * 0.30, sx * bw * 0.38, bh * 0.28, sx * bw * 0.20, bh * 0.80);
+        ctx.stroke();
+      }
+      ctx.restore();
       // Brass throat collar at the waist.
       g = ctx.createLinearGradient(0, -S * 0.014, 0, S * 0.014);
       g.addColorStop(0, "#caa04c");
@@ -233,6 +288,15 @@
       ctx.fill();
 
       ctx.restore();   // un-rotate
+
+      g = ctx.createRadialGradient(cx, tableY + H * 0.03, S * 0.05, cx, tableY + H * 0.04, S * 0.46);
+      g.addColorStop(0, "rgba(226, 170, 78, 0.16)");
+      g.addColorStop(0.42, "rgba(226, 170, 78, 0.045)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, tableY + H * 0.055, S * 0.46, S * 0.050, 0, 0, U.TAU);
+      ctx.fill();
 
       // ---- Brass plaque on the base: the actual time ----
       const plW = S * 0.30, plH = S * 0.088;

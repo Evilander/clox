@@ -82,21 +82,32 @@
   // Aperture plates: a faint rounded-square backing behind every cell,
   // static per viewport size — rendered once to an offscreen canvas.
   let plateCache = { key: "", canvas: null };
-  function aperturePlates(W, H, cell, gx, gy) {
+  function releasePlateCache() {
+    if (plateCache.canvas) {
+      plateCache.canvas.width = 0;
+      plateCache.canvas.height = 0;
+    }
+    plateCache = { key: "", canvas: null };
+  }
+
+  function aperturePlates(cell) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const key = `${Math.round(W)}x${Math.round(H)}@${dpr}`;
+    const key = `${Math.round(cell * 100)}@${dpr}`;
     if (plateCache.key === key) return plateCache.canvas;
+    releasePlateCache();
+    const w = cell * 11;
+    const h = cell * 10;
     const c = document.createElement("canvas");
-    c.width = Math.max(2, Math.round(W * dpr));
-    c.height = Math.max(2, Math.round(H * dpr));
+    c.width = Math.max(2, Math.round(w * dpr));
+    c.height = Math.max(2, Math.round(h * dpr));
     const g = c.getContext("2d");
     g.scale(dpr, dpr);
     g.fillStyle = "rgba(255, 255, 255, 0.022)";
     const r = cell * 0.16, inset = cell * 0.06;
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 11; col++) {
-        const x = gx + col * cell - cell / 2 + inset;
-        const y = gy + row * cell - cell / 2 + inset;
+        const x = col * cell + inset;
+        const y = row * cell + inset;
         U.roundRect(g, x, y, cell - inset * 2, cell - inset * 2, r);
         g.fill();
       }
@@ -108,6 +119,10 @@
   CLOX.register({
     id: "wordgrid",
     name: "Wordgrid · Word Clock",
+
+    leave() {
+      releasePlateCache();
+    },
 
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, true);
@@ -143,18 +158,66 @@
         lastPhraseKey = phraseKey;
       }
 
-      // Near-black slate background.
+      // Quiet wall background behind the physical word-clock panel.
       let g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
-      g.addColorStop(0, "#17181b");
-      g.addColorStop(1, "#0b0c0e");
+      g.addColorStop(0, "#1b1d20");
+      g.addColorStop(0.7, "#0b0c0e");
+      g.addColorStop(1, "#050608");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      const cell = Math.min((W * 0.72) / 11, (H * 0.84) / 10);
+      const framePadRatio = 0.86;
+      const secondsBand = settings.seconds ? 0.30 : 0;
+      const cell = Math.min((W * 0.82) / (11 + framePadRatio * 2), (H * 0.86) / (10 + framePadRatio * 2 + secondsBand));
       const gx = (W - cell * 11) / 2 + cell / 2;
       const gy = (H - cell * 10) / 2 + cell / 2;
+      const gLeft = gx - cell / 2, gTop = gy - cell / 2;
+      const gRight = gLeft + cell * 11, gBottom = gTop + cell * 10;
+      const framePad = cell * framePadRatio;
+      const frameX = gLeft - framePad;
+      const frameY = gTop - framePad;
+      const frameW = cell * 11 + framePad * 2;
+      const frameH = cell * 10 + framePad * 2 + (settings.seconds ? cell * 0.28 : 0);
 
-      ctx.drawImage(aperturePlates(W, H, cell, gx, gy), 0, 0, W, H);
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.70)";
+      ctx.shadowBlur = cell * 0.42;
+      ctx.shadowOffsetY = cell * 0.18;
+      g = ctx.createLinearGradient(0, frameY, 0, frameY + frameH);
+      g.addColorStop(0, "#23262b");
+      g.addColorStop(0.10, "#15171b");
+      g.addColorStop(1, "#07080a");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, frameX, frameY, frameW, frameH, cell * 0.22);
+      ctx.fill();
+      ctx.restore();
+
+      // Thick anodized frame and recessed black acrylic letter plate.
+      g = ctx.createLinearGradient(frameX, frameY, frameX + frameW, frameY + frameH);
+      g.addColorStop(0, "#3b3e43");
+      g.addColorStop(0.22, "#111318");
+      g.addColorStop(0.54, "#272b30");
+      g.addColorStop(1, "#050607");
+      ctx.strokeStyle = g;
+      ctx.lineWidth = cell * 0.30;
+      U.roundRect(ctx, frameX + cell * 0.15, frameY + cell * 0.15, frameW - cell * 0.30, frameH - cell * 0.30, cell * 0.18);
+      ctx.stroke();
+      g = ctx.createLinearGradient(0, gTop - cell * 0.35, 0, gBottom + cell * 0.35);
+      g.addColorStop(0, "#14161a");
+      g.addColorStop(0.48, "#0b0c0f");
+      g.addColorStop(1, "#060709");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, gLeft - cell * 0.34, gTop - cell * 0.34, cell * 11.68, cell * 10.68, cell * 0.18);
+      ctx.fill();
+      g = ctx.createLinearGradient(gLeft, gTop, gRight, gBottom);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.04)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.20)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, gLeft - cell * 0.34, gTop - cell * 0.34, cell * 11.68, cell * 10.68, cell * 0.18);
+      ctx.fill();
+
+      ctx.drawImage(aperturePlates(cell), gLeft, gTop, cell * 11, cell * 10);
 
       ctx.font = `600 ${cell * 0.52}px "Segoe UI", system-ui, sans-serif`;
       ctx.textAlign = "center";
@@ -195,9 +258,7 @@
 
       // Corner minute dots, pinned to the grid's own bounding box (clockwise
       // from top-left) rather than the viewport corners.
-      const gLeft = gx - cell / 2, gTop = gy - cell / 2;
-      const gRight = gLeft + cell * 11, gBottom = gTop + cell * 10;
-      const dOff = cell * 0.9;
+      const dOff = cell * 0.64;
       const dotR = cell * 0.07;
       const corners = [
         [gLeft - dOff, gTop - dOff], [gRight + dOff, gTop - dOff],
@@ -223,6 +284,23 @@
         ctx.fillStyle = "rgba(255, 246, 228, 0.25)";
         ctx.fillRect(gLeft, gBottom + cell * 0.55, (cell * 11) * (t.fs / 60), Math.max(2, cell * 0.03));
       }
+
+      // Front acrylic sheet: visible only as controlled reflections.
+      ctx.save();
+      U.roundRect(ctx, frameX + cell * 0.18, frameY + cell * 0.18, frameW - cell * 0.36, frameH - cell * 0.36, cell * 0.16);
+      ctx.clip();
+      g = ctx.createLinearGradient(frameX + frameW * 0.12, frameY, frameX + frameW * 0.72, frameY + frameH);
+      g.addColorStop(0, "rgba(255, 255, 255, 0.11)");
+      g.addColorStop(0.18, "rgba(255, 255, 255, 0.026)");
+      g.addColorStop(0.32, "rgba(255, 255, 255, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.12)");
+      ctx.fillStyle = g;
+      ctx.fillRect(frameX, frameY, frameW, frameH);
+      ctx.fillStyle = "rgba(255, 245, 220, 0.035)";
+      ctx.beginPath();
+      ctx.ellipse(W / 2, frameY + cell * 0.42, frameW * 0.32, cell * 0.22, 0, 0, U.TAU);
+      ctx.fill();
+      ctx.restore();
     }
   });
 })();

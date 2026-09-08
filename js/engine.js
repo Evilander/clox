@@ -13,14 +13,22 @@
   const galleryClose = document.getElementById("gallery-close");
 
   const SETTINGS_KEY = "clox.settings.v1";
-  const CYCLE_MS = 2 * 60 * 1000;
   const FADE_MS = 450;
-  const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+  const TV = new URLSearchParams(location.search).get("tv") === "1";
+  // Bound the backing store to UHD, including browsers reporting a large DPR.
+  const DPR = () => Math.min(window.devicePixelRatio || 1, TV ? 4 : 2,
+    3840 / Math.max(1, window.innerWidth), 2160 / Math.max(1, window.innerHeight));
 
   const settings = Object.assign(
-    { faceId: null, h24: false, seconds: true, cycle: false, dim: 0, chime: false },
+    { faceId: null, h24: false, seconds: true, cycle: TV, cycleMinutes: 2, dim: 0, chime: false },
     loadSettings()
   );
+  settings.tv = TV;
+  for (const key of ["h24", "seconds", "cycle", "chime"]) settings[key] = !!settings[key];
+  if (![0, 1, 2].includes(settings.dim)) settings.dim = 0;
+  if (![2, 5, 10, 30].includes(settings.cycleMinutes)) settings.cycleMinutes = 2;
+  const savedChime = settings.chime;
+  if (TV) settings.chime = false;
 
   /* URL params take one-time precedence over stored settings:
    * ?face=nixie&h24=1&seconds=0&cycle=1 — handy for kiosk shortcuts. */
@@ -41,6 +49,7 @@
   let lastCycle = performance.now();
   let toastTimer = null, hintTimer = null, cursorTimer = null;
   let wakeLock = null, wakeLockPending = false;
+  let active = true, frameRequest = null, lastFrame = -Infinity;
 
   // Crossfade state: a snapshot of the outgoing frame fades over the new face.
   const snap = document.createElement("canvas");
@@ -63,7 +72,12 @@
     catch { return {}; }
   }
   function saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+    try {
+      const stored = Object.assign({}, settings);
+      delete stored.tv;
+      if (TV) stored.chime = savedChime;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
+    }
     catch { /* file:// storage can be unavailable; run without persistence */ }
   }
 
@@ -125,14 +139,15 @@
   function syncControls() {
     const current = CLOX.faces[faceIndex];
     for (const face of CLOX.faces) {
-      if (face.controls) face.controls.hidden = galleryOn || face !== current;
+      if (face.controls) face.controls.hidden = TV || galleryOn || face !== current;
     }
-    galleryButton.hidden = galleryOn || current?.id === "meridian";
+    galleryButton.hidden = TV || galleryOn || current?.id === "meridian";
     if (galleryOn) canvas.setAttribute("aria-label", "Clock face gallery. Use arrow keys to choose, Enter to select, and Escape to close.");
     else if (!current?.controls) canvas.setAttribute("aria-label", `${current?.name || "Clox"}. Press M for world time or G for the face gallery.`);
   }
 
   async function toggleFullscreen() {
+    if (TV) return;
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
@@ -198,13 +213,17 @@
     const n = CLOX.faces.length;
     const key = `${W}x${H}x${n}`;
     if (tiles.key === key) return;
+    const safe = TV ? W * 0.055 : 0;
+    const header = TV ? H * 0.08 : 0;
+    const usableW = W - safe * 2;
+    const usableH = H - header * 2;
     const pad = Math.max(10, Math.round(Math.min(W, H) * 0.018));
-    const labelH = Math.max(18, Math.round(H * 0.024));
+    const labelH = Math.max(18, Math.round(H * (TV ? 0.033 : 0.024)));
     const cols = Math.max(2, Math.min(n, Math.ceil(Math.sqrt(n * W / Math.max(120, H - 80) / 1.6))));
     const rows = Math.ceil(n / cols);
-    let tw = (W - pad * (cols + 1)) / cols;
+    let tw = (usableW - pad * (cols + 1)) / cols;
     let th = tw * 0.625;
-    const fitH = Math.max(24, (H - pad * 2 - 68) / rows - labelH - pad * 0.4);
+    const fitH = Math.max(24, (usableH - pad * 2 - (TV ? 0 : 68)) / rows - labelH - pad * 0.4);
     if (th > fitH) { th = fitH; tw = th / 0.625; }
     const gridW = cols * (tw + pad) - pad;
     const gridH = rows * (th + labelH + pad * 0.4) - pad * 0.4;
@@ -219,7 +238,7 @@
     tiles = {
       key, list, cols, tw, th, pad, labelH,
       left: (W - gridW) / 2,
-      top: (H - 60 - gridH) / 2
+      top: (H - (TV ? 0 : 60) - gridH) / 2
     };
     if (galleryChoices.childElementCount !== n) {
       galleryChoices.replaceChildren();
@@ -256,13 +275,25 @@
     const dpr = DPR();
     try {
       t.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      t.ctx.save();
       CLOX.faces[i].draw(t.ctx, tiles.tw, tiles.th, d,
         Object.assign({}, settings, { preview: true }), now);
       t.drawn = true;
     } catch { /* a broken face shows as a dark tile rather than killing the loop */ }
+    finally { t.ctx.restore(); }
 
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, W, H);
+    if (TV) {
+      ctx.fillStyle = "#ddcba5";
+      ctx.font = `${H * 0.021}px 'Segoe UI', sans-serif`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("CLOX  /  THE COLLECTION", W * 0.07, H * 0.055);
+      ctx.fillStyle = "#8c999c";
+      ctx.textAlign = "right";
+      ctx.fillText(`${n} clocks`, W * 0.93, H * 0.055);
+    }
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -292,7 +323,7 @@
       }
       ctx.fillStyle = k === galSel ? "rgba(255, 220, 150, 0.95)" : "rgba(255, 255, 255, 0.55)";
       ctx.font = `${k === galSel ? 600 : 400} ${Math.max(11, tiles.labelH * 0.55)}px "Segoe UI", sans-serif`;
-      const label = W < 600 ? CLOX.faces[k].name.split(" · ")[0] : CLOX.faces[k].name;
+      const label = W < 600 || TV ? CLOX.faces[k].name.split(" · ")[0] : CLOX.faces[k].name;
       ctx.fillText(label, x + tiles.tw / 2, y + tiles.th + tiles.labelH * 0.55,
         tiles.tw * 0.96);
     }
@@ -316,6 +347,8 @@
     galleryDialog.close();
     if (pick != null) setFace(pick);
     else { beginFade(); lastCycle = performance.now(); }
+    tiles.key = "";
+    tiles.list = [];
     syncControls();
     const returnTo = galleryReturnFocus;
     galleryReturnFocus = null;
@@ -331,7 +364,8 @@
   window.addEventListener("resize", resize);
   document.addEventListener("fullscreenchange", syncWakeLock);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") syncWakeLock();
+    if (document.visibilityState === "visible") { syncWakeLock(); resumeFrames(); }
+    else { cancelAnimationFrame(frameRequest); frameRequest = null; }
   });
   window.addEventListener("mousemove", pokeCursor);
 
@@ -350,7 +384,7 @@
 
   canvas.addEventListener("click", toggleFullscreen);
 
-  window.addEventListener("keydown", e => {
+  function handleKeyboard(e) {
     if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
     if (galleryOn) {
       if (e.target === galleryClose) return;
@@ -399,7 +433,7 @@
       case "a": case "A":
         settings.cycle = !settings.cycle; saveSettings();
         lastCycle = performance.now();
-        toast(`auto-cycle ${settings.cycle ? "on (2 min)" : "off"}`); break;
+        toast(`auto-cycle ${settings.cycle ? `on (${settings.cycleMinutes} min)` : "off"}`); break;
       case "n": case "N":
         settings.dim = (settings.dim + 1) % DIM_LEVELS.length; saveSettings();
         toast(`night dim ${DIM_NAMES[settings.dim]}`); break;
@@ -427,10 +461,47 @@
       default: return;
     }
     e.preventDefault();
+  }
+
+  window.addEventListener("keydown", e => {
+    if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (TV && CLOX.tv?.handleKey(e.key)) { e.preventDefault(); return; }
+    handleKeyboard(e);
   });
+
+  CLOX.engine = {
+    get settings() { return Object.assign({}, settings); },
+    get face() { return CLOX.faces[faceIndex]; },
+    get galleryOpen() { return galleryOn; },
+    command(key) { handleKeyboard({ key, target: canvas, preventDefault() {} }); },
+    closeGallery() { if (galleryOn) closeGallery(null); },
+    cycleInterval() {
+      const choices = [2, 5, 10, 30];
+      settings.cycleMinutes = choices[(choices.indexOf(settings.cycleMinutes) + 1) % choices.length];
+      lastCycle = performance.now(); saveSettings();
+    },
+    setActive(value) {
+      active = !!value;
+      if (active) { lastCycle = performance.now(); resumeFrames(); }
+      else { cancelAnimationFrame(frameRequest); frameRequest = null; }
+    }
+  };
+
+  function resumeFrames() {
+    if (started && active && !document.hidden && frameRequest === null) {
+      lastFrame = -Infinity;
+      frameRequest = requestAnimationFrame(frame);
+    }
+  }
 
   // ---- Frame loop ----
   function frame(now) {
+    frameRequest = null;
+    if (!active || document.hidden) return;
+    frameRequest = requestAnimationFrame(frame);
+    // TV panels run at 60 Hz; a steady 30 Hz gives the renderer time for UHD.
+    if (TV && now - lastFrame < 1000 / 30 - 1) return;
+    lastFrame = now;
     const d = new Date();
 
     // Chime + title bookkeeping runs in every mode, gallery included.
@@ -452,17 +523,20 @@
         ctx.fillStyle = `rgba(0, 0, 0, ${DIM_LEVELS[settings.dim]})`;
         ctx.fillRect(0, 0, W, H);
       }
-      requestAnimationFrame(frame);
       return;
     }
 
-    if (CLOX.faces[faceIndex]?.busy?.()) lastCycle = now;
-    if (settings.cycle && now - lastCycle > CYCLE_MS) {
+    if (CLOX.faces[faceIndex]?.busy?.() || CLOX.tv?.busy) lastCycle = now;
+    if (settings.cycle && now - lastCycle > settings.cycleMinutes * 60000) {
       setFace(faceIndex + 1, false);
     }
 
     const face = CLOX.faces[faceIndex];
-    if (face) face.draw(ctx, W, H, d, settings, now);
+    if (face) {
+      ctx.save();
+      try { face.draw(ctx, W, H, d, settings, now); }
+      finally { ctx.restore(); }
+    }
 
     // Crossfade the previous face's last frame over the new one.
     if (now - fadeT0 < FADE_MS) {
@@ -472,6 +546,8 @@
       ctx.globalAlpha = 1 - U.easeOutCubic(p);
       ctx.drawImage(snap, 0, 0, canvas.width, canvas.height);
       ctx.restore();
+    } else if (snap.width > 1) {
+      snap.width = snap.height = 1;
     }
 
     // Night dim: one compositor overlay, faces stay untouched.
@@ -480,7 +556,6 @@
       ctx.fillRect(0, 0, W, H);
     }
 
-    requestAnimationFrame(frame);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -491,10 +566,11 @@
       return;
     }
     const savedIdx = CLOX.faces.findIndex(f => f.id === settings.faceId);
-    setFace(savedIdx >= 0 ? savedIdx : 0, false, false, false);   // fires enter() via prev=null
+    const initialIdx = TV ? CLOX.faces.findIndex(f => f.id === "nocturne") : 0;
+    setFace(savedIdx >= 0 ? savedIdx : Math.max(0, initialIdx), false, false, false);
     started = true;
-    if (!CLOX.faces[faceIndex].controls) showHint();
+    if (!CLOX.faces[faceIndex].controls || TV) showHint();
     pokeCursor();
-    requestAnimationFrame(frame);
+    resumeFrames();
   });
 })();

@@ -1,2 +1,14 @@
 .playwright-mcp/
 __pycache__/
+.artifacts/
+artifacts/
+android/.gradle/
+android/**/build/
+android/local.properties
+*.jks
+*.keystore
+.codex/
+.claude/
+.agents/
+AGENTS.md
+CLAUDE.md

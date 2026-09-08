@@ -35,9 +35,24 @@
   let grat = { key: "", canvas: null };
   let trace = { key: "", strokes: null, flat: null };
 
+  function releaseLayer(layer) {
+    if (layer.canvas) {
+      layer.canvas.width = 0;
+      layer.canvas.height = 0;
+    }
+  }
+
+  function releaseScopeCaches() {
+    releaseLayer(phosphor);
+    releaseLayer(grat);
+    phosphor = { key: "", canvas: null, ctx: null };
+    grat = { key: "", canvas: null };
+  }
+
   function ensureLayers(w, h) {
     const key = `${Math.round(w)}x${Math.round(h)}@${Math.min(window.devicePixelRatio || 1, 2)}`;
     if (phosphor.key !== key) {
+      releaseLayer(phosphor);
       const c = document.createElement("canvas");
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       c.width = Math.max(2, Math.round(w * dpr));
@@ -52,6 +67,7 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const key = `${Math.round(w)}x${Math.round(h)}@${dpr}`;
     if (grat.key === key) return grat.canvas;
+    releaseLayer(grat);
     const c = document.createElement("canvas");
     c.width = Math.round(w * dpr);
     c.height = Math.round(h * dpr);
@@ -109,6 +125,10 @@
     id: "scope",
     name: "Scope · Vector Phosphor",
 
+    leave() {
+      releaseScopeCaches();
+    },
+
     draw(ctx, W, H, d, settings, now) {
       const t = U.timeParts(d, settings.h24);
 
@@ -119,11 +139,24 @@
       g.addColorStop(1, "#101115");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      g = ctx.createLinearGradient(0, H * 0.62, 0, H);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(0.45, "rgba(7, 8, 10, 0.34)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.78)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.56, W, H * 0.44);
 
-      const scrW = Math.min(W * 0.70, H * 1.02);
+      const scrW = Math.min(W * 0.76, H * 1.10);
       const scrH = scrW * 0.72;
       const sx = (W - scrW) / 2, sy = (H - scrH) / 2 - H * 0.045;
       const bez = Math.min(W, H) * 0.035;
+
+      g = ctx.createRadialGradient(W / 2, sy + scrH + bez * 2, bez, W / 2, sy + scrH + bez * 3, scrW * 0.55);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.72)");
+      g.addColorStop(0.70, "rgba(0, 0, 0, 0.22)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(sx - bez * 2.6, sy + scrH + bez * 0.6, scrW + bez * 5.2, bez * 4.4);
 
       // Bezel plate + screws + branding.
       g = ctx.createLinearGradient(0, sy - bez * 1.6, 0, sy + scrH + bez * 1.6);
@@ -136,6 +169,28 @@
       U.roundRect(ctx, sx - bez * 1.6, sy - bez * 1.6, scrW + bez * 3.2, scrH + bez * 3.2, bez);
       ctx.fill();
       ctx.restore();
+      g = ctx.createLinearGradient(sx - bez * 1.6, 0, sx + scrW + bez * 1.6, 0);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.44)");
+      g.addColorStop(0.13, "rgba(255, 255, 255, 0.045)");
+      g.addColorStop(0.50, "rgba(255, 255, 255, 0.010)");
+      g.addColorStop(0.87, "rgba(255, 255, 255, 0.034)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, sx - bez * 1.6, sy - bez * 1.6, scrW + bez * 3.2, scrH + bez * 3.2, bez);
+      ctx.fill();
+      for (const side of [-1, 1]) {
+        const hx = side < 0 ? sx - bez * 2.55 : sx + scrW + bez * 1.75;
+        const hy = sy + scrH * 0.21;
+        g = ctx.createLinearGradient(hx, 0, hx + bez * 0.8, 0);
+        g.addColorStop(0, side < 0 ? "#06070a" : "#2b2f37");
+        g.addColorStop(1, side < 0 ? "#2b2f37" : "#06070a");
+        ctx.fillStyle = g;
+        U.roundRect(ctx, hx, hy, bez * 0.78, scrH * 0.58, bez * 0.22);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.055)";
+        U.roundRect(ctx, hx + bez * 0.16, hy + bez * 0.28, bez * 0.46, scrH * 0.58 - bez * 0.56, bez * 0.16);
+        ctx.fill();
+      }
       for (const [fx, fy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
         const scx = sx - bez * 0.9 + fx * (scrW + bez * 1.8);
         const scy = sy - bez * 0.9 + fy * (scrH + bez * 1.8);
@@ -173,6 +228,13 @@
         sx + scrW / 2, sy + scrH / 2, scrH * 0.85);
       g.addColorStop(0, "#061309");
       g.addColorStop(1, "#020805");
+      ctx.fillStyle = g;
+      U.roundRect(ctx, sx, sy, scrW, scrH, bez * 0.8);
+      ctx.fill();
+      g = ctx.createRadialGradient(sx + scrW / 2, sy + scrH / 2, scrH * 0.35,
+        sx + scrW / 2, sy + scrH / 2, scrH * 0.68);
+      g.addColorStop(0, "rgba(0, 0, 0, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.42)");
       ctx.fillStyle = g;
       U.roundRect(ctx, sx, sy, scrW, scrH, bez * 0.8);
       ctx.fill();
@@ -305,6 +367,13 @@
       g.addColorStop(0, "rgba(180, 255, 210, 0.05)");
       g.addColorStop(0.4, "rgba(180, 255, 210, 0.012)");
       g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(sx, sy, scrW, scrH);
+      g = ctx.createLinearGradient(sx + scrW * 0.08, sy, sx + scrW * 0.70, sy + scrH);
+      g.addColorStop(0, "rgba(190, 255, 220, 0.11)");
+      g.addColorStop(0.16, "rgba(190, 255, 220, 0.024)");
+      g.addColorStop(0.30, "rgba(190, 255, 220, 0)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0.10)");
       ctx.fillStyle = g;
       ctx.fillRect(sx, sy, scrW, scrH);
       ctx.restore();   // screen clip

@@ -4,9 +4,62 @@ Fullscreen clock screensavers and an offline meeting planner for people in
 different time zones. Zero dependencies, zero build step — double-click
 `index.html` or run `clox.bat` for instant kiosk-mode fullscreen.
 
-Resolution-independent: everything is drawn relative to the window size with
-`devicePixelRatio` scaling (capped at 2×), so 1080p, 1440p (2K), and 4K all
-render crisp.
+Clocks draw at the display's pixel density, with a maximum 3840 × 2160 backing
+canvas. The Android app includes remote controls, offline assets, and a native
+keep-awake window for Fire TV.
+
+## Fire TV APK
+
+Build the sideloadable APK on Windows with Java 17 and Android SDK platform 35:
+
+```powershell
+.\scripts\build-apk.ps1 -SdkRoot B:\Android\Sdk
+```
+
+The signed APK is written to
+`android/app/build/outputs/apk/release/clox-fire-tv-release.apk`. The script
+downloads and verifies Gradle, runs the Android tests, and verifies the APK
+signature. The signing key stays outside the repository under
+`%LOCALAPPDATA%\Clox\android-signing`; keep that folder to sign future updates
+that install over the existing app.
+
+Enable ADB debugging on your Fire TV, then install over your local network:
+
+```powershell
+.\scripts\install-fire-tv.ps1 -Device YOUR_TV_IP:5555 -Launch
+```
+
+Accept the Fire TV's debugging prompt if this computer is not already
+authorized. You can also transfer and install the signed APK using your
+preferred sideloading tool. The app appears as **Clox** in the TV launcher.
+
+| Remote button | Action |
+|---|---|
+| Left / Right | Previous / next clock |
+| OK or Up | Open the clock collection |
+| Menu or Down | Open settings |
+| Play/Pause | Toggle automatic rotation |
+| Back | Close the current overlay; from the clock, exit the app |
+
+The collection uses arrows and OK to select a clock. Settings include
+12/24-hour time, seconds, evening brightness, automatic rotation at 2, 5, 10,
+or 30 minutes, Liquid's palette, and Meridian's four cities. In the city
+selector, Up/Down chooses a slot and Left/Right changes its city; **Save cities**
+applies the choices and Back cancels them. Menus pause automatic rotation.
+
+The APK bundles every clock and image and requests no Android permissions.
+It uses the installed system WebView. The foreground window keeps the screen
+awake; Home or Back returns control to the TV's normal sleep behavior.
+Rendering pauses in the background. On supported 4K displays, the app uses a
+3840 × 2160 SurfaceView and a private virtual display to render independently
+of a 1080p system interface. It falls back to the normal WebView surface if
+that path is unavailable. Display and canvas sizes are shown in settings.
+No global resolution or sleep settings are changed.
+
+The UHD path needs verification on each vendor's hardware. Browser rendering,
+Android compilation, and APK signing alone do not prove physical 4K output.
+This APK targets Android-based Fire OS, not Vega OS. Preview the remote UI in
+a desktop browser with `index.html?tv=1`.
 
 ## Meridian · World Time
 
@@ -77,6 +130,9 @@ network requests, or runtime dependencies.
 
 ## Faces
 
+The collection has 24 clocks, including Meridian above. Ocarina and Berlin have
+been removed. The remaining designs have new materials, lighting, and details.
+
 | | |
 |---|---|
 | ![Redline](screenshots/redline.jpg) **Redline · 80s LED** — red seven-segment clock radio: ghost segments, bloom, blinking colon, PM/ALARM indicators, segment afterglow on digit changes, snooze-bar enclosure with speaker grille, floor reflection | ![Flip](screenshots/flip.jpg) **Flip · Solari** — split-flap clock with per-digit modules that cascade on rollovers, gravity-eased flaps with visible card thickness, settle bounce, worn corner chips, AM/PM tag, date line |
@@ -84,12 +140,13 @@ network requests, or runtime dependencies.
 | ![Nixie](screenshots/nixie.jpg) **Nixie · IN-18** — glass tubes on a grained walnut base, unlit cathode stacks, DPR-crisp honeycomb anode mesh, ionization crossfade between digits, tube pins, neon-dot separators | ![VFD](screenshots/vfd.jpg) **VFD · Hi-Fi** — cyan vacuum-fluorescent display behind receiver glass, heater filament wires, phosphor persistence on digit changes, weekday indicator row, cached dot-matrix texture |
 | ![Wordgrid](screenshots/wordgrid.jpg) **Wordgrid · Word Clock** — 11×10 letter grid; the time lights up as a sentence, new letters igniting in reading order; aperture plates behind every cell; corner dots count the extra minutes | ![Terminal](screenshots/terminal.jpg) **Terminal · CRT** — green phosphor with true barrel distortion, typed boot sequence, 5×7 pixel-block digits with retention ghosts, idle diagnostic chatter, scanlines, refresh band, blinking cursor |
 | ![Braun](screenshots/braun.jpg) **Braun · Minimal** — Rams-school dial on paper-grain stock, stick hands, yellow second hand that steps each second with a two-stage mechanical recoil | ![LCD](screenshots/lcd.jpg) **LCD · Digital Watch** — F-91W-style liquid crystal: dark segments with depth shadow and change ghosting, viewing-angle shading, day/date header, resin bezel with screws, lugs, and accent text |
-| ![Berlin](screenshots/berlin.jpg) **Berlin · Mengenlehreuhr** — the 1975 set-theory clock in its cream steel housing: blinking seconds lamp, 5-hour and 1-hour red rows, 5-minute row with red quarters, 1-minute yellow row; lamps warm up like neon and sag when the relays fire | ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + dead-beat seconds sub-dials) with a lyre pendulum swinging behind the bevelled glass of a grained walnut case |
-| ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls casting wall shadows from one light source, brass ferrules and spokes, paddle hour hand, elliptical minute tip | ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — concentric comet-tail arcs for hours/minutes/seconds with glowing endpoints, rollover pulses, hairline tick ring, and a thin digital readout |
-| ![Ocarina](screenshots/ocarina.jpg) **Ocarina · Hyrule Field** — world clock: real day/night sky with arcing sun and properly-masked crescent moon, smoke-ringed volcano with night embers, blue-roofed castle with flickering windows, gold-banded ceramic dial, and a fairy trailing sparkles | ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines; dawn and dusk blend through golden hour, clouds drift across the day, moon-shadow and fireflies after dark |
+| ![Regulator](screenshots/regulator.jpg) **Regulator · Pendulum** — watchmaker's regulator dial (central minute hand, hour + dead-beat seconds sub-dials) with a lyre pendulum swinging behind the bevelled glass of a grained walnut case | ![Nelson](screenshots/nelson.jpg) **Nelson · Ball Clock** — the 1949 mid-century starburst: lacquered balls casting wall shadows from one light source, brass ferrules and spokes, paddle hour hand, elliptical minute tip |
+| ![Polar](screenshots/polar.jpg) **Polar · Radial Arcs** — concentric comet-tail arcs for hours/minutes/seconds with glowing endpoints, rollover pulses, hairline tick ring, and a thin digital readout | ![Sundial](screenshots/sundial.jpg) **Sundial · Garden Stone** — the gnomon's shadow IS the clock: 15°/hour across engraved Roman hour lines; dawn and dusk blend through golden hour, clouds drift across the day, moon-shadow and fireflies after dark |
 | ![Liquid](screenshots/liquid.jpg) **Liquid · Reactive Pool** — the waterline climbs the digits through the hour (halfway up at :30, drowning them by :59) and lets go in a 3-second release at the top of the hour; a droplet splashes real ripples every second, the surface stirs when you move the mouse, and `C` cycles color presets | ![Tifo](screenshots/tifo.jpg) **Tifo · The Crowd Is The Clock** — ~2,000 simulated fans hold up cards that spell the time, card-stunt style; the stadium wave laps the stand exactly once per minute (the wave front IS the second hand); minute changes cascade with real reaction-time lag and the occasional wrong card; hourly confetti + camera flashes + a new colorway |
 | ![Weaver](screenshots/weaver.jpg) **Weaver · Orb Spider** — a spider spins the time: 12 silk spokes are the hours (the current one gleams), one capture-spiral segment laid per minute — 5 laps × 12 sectors — so the web's completeness IS the minute hand; dew slides down the threads each second; on the hour a gust tears the web loose and she begins again under a real-phase moon | ![Hourglass](screenshots/hourglass.jpg) **Hourglass · One Minute of Sand** — the top bulb drains over exactly 60 seconds through a live stream into a leaning pile, then the whole glass flips at the top of the minute; brass plaque engraves the time and date |
 | ![Tetris](screenshots/tetris.jpg) **Tetris · Falling Digits** — falling bars assemble HH:MM as a multicolor block stack in the first ~18 seconds of the minute; changed digits line-clear flash and burst, then rebuild; LEVEL is the hour, LINES is minutes-today, SCORE is seconds-today | ![Scope](screenshots/scope.jpg) **Scope · Vector Phosphor** — an XY oscilloscope traces the digits as vector strokes onto real fading phosphor, with a beam dot racing the trace, graticule, front-panel knobs, and a corner Lissajous figure whose phase turns once per minute |
+| ![Nocturne](screenshots/nocturne.jpg) **Nocturne · Lunar Observatory** — shaded lunar globe from NASA imagery, a brass hour ring, orbiting minute and second markers, local time, and approximate lunar phase | ![DVD](screenshots/dvd.jpg) **DVD · The Idle Screen** — the classic DVD VIDEO logo on black, diagonal bounces, a new color at each edge, corner near misses, live time, and a countdown to the next hour |
+| ![Airwave](screenshots/airwave.jpg) **Airwave · Analog Television** — phosphor-colored time, scanlines, occasional tracking tears, and a full burst of snow at each hour; the signal settles back into the time after 2.9 seconds |  |
 
 ## Run it
 
@@ -113,7 +170,7 @@ While fullscreen, clox requests a screen wake lock so the display stays on.
 | `F` / click | Toggle fullscreen |
 | `S` | Toggle seconds |
 | `H` | Toggle 12/24-hour |
-| `A` | Auto-cycle faces every 2 minutes |
+| `A` | Toggle auto-cycle (2 minutes by default; interval can be changed in TV settings) |
 | `N` | Night dim (off → low → high) |
 | `B` | Hourly chime (two soft tones; off by default) |
 | `C` | Cycle color preset (Liquid face) |
@@ -146,6 +203,8 @@ css/style.css       canvas fill, toast/hint overlays, cursor hiding
 js/util.js          registry, easings, time parts, seven-segment renderer
 js/engine.js        rAF loop, DPR resize, input, settings, wake lock,
                     face lifecycle, gallery, crossfade, dim, chime
+js/tv.js            remote navigation, TV settings and city selection
+js/moon-texture.js  bundled NASA LROC lunar albedo
 js/world-time.js    city catalog, IANA local time, solar geometry, timelines
 js/meeting-time.js  full-duration availability search, local ranges, calendar export
 js/world-land.js    bundled Natural Earth land geometry
@@ -194,3 +253,12 @@ in PowerShell before running the tests. `msedge` selects Edge.
 The map can be rebuilt from its pinned source with
 `python scripts/build-land.py` (Python standard library; network required only
 for this rebuild).
+
+### Image credits
+
+Nocturne uses the [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) from NASA's
+Scientific Visualization Studio, adapted from LROC WAC data. The lunar phase
+uses a mean 29.53059-day cycle; it is approximate and does not include libration.
+The [DVD VIDEO logo](https://commons.wikimedia.org/wiki/File:DVD-Video_Logo.svg)
+is by DVD FLLC; the bundled path follows the geometric logo reproduction
+available on Wikimedia Commons.
